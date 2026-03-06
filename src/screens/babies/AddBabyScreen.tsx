@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -124,7 +125,8 @@ export const AddBabyScreen: React.FC = () => {
               { backgroundColor: form.gender === 'boy' ? Colors.primarySoft : '#FCE4EC' },
             ]}>
               <Text style={styles.avatarEmoji}>
-                {form.gender === 'boy' ? '👦' : '👧'}
+                {/* {form.gender === 'boy' ? '👦' : '👧'} */}
+                <Image source={require('../../../assets/icon.png')} style={{ width: 40, height: 40 }} />
               </Text>
             </View>
             <Text style={styles.heroTitle}>Tell us about your little one</Text>
@@ -143,33 +145,7 @@ export const AddBabyScreen: React.FC = () => {
                 error={errors.name}
               />
 
-              {/* Gender */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Gender</Text>
-                <View style={styles.genderRow}>
-                  {(['boy', 'girl'] as BabyGender[]).map((g) => (
-                    <TouchableOpacity
-                      key={g}
-                      style={[
-                        styles.genderBtn,
-                        form.gender === g && styles.genderBtnActive,
-                        form.gender === g && g === 'girl' && styles.genderBtnGirl,
-                      ]}
-                      onPress={() => setForm((prev) => ({ ...prev, gender: g }))}
-                    >
-                      <Text style={styles.genderEmoji}>{g === 'boy' ? '👦' : '👧'}</Text>
-                      <Text
-                        style={[
-                          styles.genderLabel,
-                          form.gender === g && styles.genderLabelActive,
-                        ]}
-                      >
-                        {g.charAt(0).toUpperCase() + g.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+
 
               {/* Date of Birth */}
               <View style={styles.fieldGroup}>
@@ -210,7 +186,35 @@ export const AddBabyScreen: React.FC = () => {
                 )}
               </View>
 
-              <Button label="Next" onPress={handleNext} />
+              {/* Gender */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Gender</Text>
+                <View style={styles.genderRow}>
+                  {(['boy', 'girl'] as BabyGender[]).map((g) => (
+                    <TouchableOpacity
+                      key={g}
+                      style={[
+                        styles.genderBtn,
+                        form.gender === g && styles.genderBtnActive,
+                        form.gender === g && g === 'girl' && styles.genderBtnGirl,
+                      ]}
+                      onPress={() => setForm((prev) => ({ ...prev, gender: g }))}
+                    >
+                      {/* <Text style={styles.genderEmoji}>{g === 'boy' ? '👦' : '👧'}</Text> */}
+                      <Text
+                        style={[
+                          styles.genderLabel,
+                          form.gender === g && styles.genderLabelActive,
+                        ]}
+                      >
+                        {g.charAt(0).toUpperCase() + g.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <Button label="Save" onPress={handleNext} />
             </>
           ) : (
             <>

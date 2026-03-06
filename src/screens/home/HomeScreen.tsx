@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   RefreshControl,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../store/authStore';
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuthStore } from "../../store/authStore";
 import { useBabyStore } from '../../store/babyStore';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { SensorCard } from '../../components/SensorCard';
@@ -21,7 +24,28 @@ import { cryService } from '../../services/cry.service';
 
 const { width } = Dimensions.get('window');
 
+const calcBabyAge = (dob: string): string => {
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return '';
+  const days   = Math.floor((Date.now() - birth.getTime()) / 86400000);
+  if (days < 0)  return 'Future date';
+  if (days === 0) return 'Newborn';
+  const months = Math.floor(days / 30.44);
+  const years  = Math.floor(days / 365.25);
+  if (days < 7)   return `${days}d`;
+  if (days < 30)  return `${Math.floor(days / 7)}Weeks`;
+  if (years < 1) {
+    const remWeeks = Math.floor((days - months * 30.44) / 7);
+    return remWeeks > 0
+      ? `${months}Months,${remWeeks}Weeks`
+      : `${months}Months`;
+  }
+  const remMonths = months - years * 12;
+  return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}yr`;
+};
+
 export const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { user } = useAuthStore();
   const {
     babies,
@@ -61,7 +85,7 @@ export const HomeScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  const firstName = user?.fullName?.split(' ')[0] ?? 'Parent';
+  const firstName = (user?.name ?? user?.fullName ?? 'Parent').split(' ')[0];
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -89,47 +113,47 @@ export const HomeScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{greeting} 👋</Text>
-            <Text style={styles.name}>{firstName}</Text>
+            <Text style={styles.greeting}>{greeting}</Text>
+            <Text style={styles.name}>HI,{firstName}</Text>
           </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="notifications-outline" size={22} color={Colors.textDark} />
-              <View style={styles.notifBadge} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("Notifications")}>
+            <Ionicons name="notifications-outline" size={24} color={Colors.textDark} />
+            <View style={styles.notifBadge} />
+          </TouchableOpacity>
         </View>
 
-        {/* Baby Selector */}
-        {babies.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.babySelector}
-          >
-            {babies.map((baby) => (
-              <TouchableOpacity
-                key={baby.id}
-                style={[
-                  styles.babySelectorItem,
-                  baby.id === activeBabyId && styles.babySelectorItemActive,
-                ]}
-                onPress={() => setActiveBaby(baby.id)}
-              >
-                <BabyAvatar baby={baby} size={42} />
-                <Text
-                  style={[
-                    styles.babySelectorName,
-                    baby.id === activeBabyId && styles.babySelectorNameActive,
-                  ]}
-                >
-                  {baby.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+{/* Baby Card — Updated to match Image 2 */}
+{activeBaby && (
+  <View style={styles.babyCard}>
+    <View style={styles.babyCardLeft}>
+      {/* Photo with border */}
+      <View style={styles.babyCardPhotoWrap}>
+        {activeBaby.photoUrl ? (
+          <Image source={{ uri: activeBaby.photoUrl }} style={styles.babyCardPhoto} />
+        ) : (
 
+          <Image source={require('../../../assets/baby.jpg')} style={styles.babyCardPhoto} />
+
+        )}
+      </View>
+
+      {/* Info: Name and Age */}
+      <View style={styles.babyCardInfo}>
+        <Text style={styles.babyCardName}>{activeBaby.name}</Text>
+        <Text style={styles.babyCardAge}>{calcBabyAge(activeBaby.dateOfBirth)}</Text>
+      </View>
+    </View>
+
+    {/* View Profile Button */}
+    <TouchableOpacity
+      style={styles.viewProfileBtn}
+      onPress={() => navigation.navigate('Babies')}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.viewProfileText}>View Profile</Text>
+    </TouchableOpacity>
+  </View>
+)}
         {/* Status Banner */}
         {activeBaby && (
           <View style={[styles.statusBanner, Shadows.md]}>
@@ -422,4 +446,77 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
+
+  // ── New Baby Card ─────────────────────────
+// ── Changed Lines in StyleSheet ─────────────────────────
+
+  babyCard: {
+    backgroundColor: '#F0F9FF', // Light blue background from image 2
+    borderRadius: 20,           // More rounded corners
+    padding: 16,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderColor: '#3498db',     // Vibrant blue border
+    marginVertical: 10,
+    gap: 7,                   // Added gap between elements
+  },
+  babyCardLeft: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12, 
+    flex: 1 
+  },
+  babyCardPhotoWrap: {
+    width: 80,                 // Slightly larger
+    height: 80, 
+    borderRadius: 40,
+    overflow: 'hidden', 
+    borderWidth: 1, 
+    borderColor: '#BDC3C7',    // Grey border around image
+  },
+  babyCardPhoto: { 
+    width: '100%', 
+    height: '100%' 
+  },
+  babyCardPhotoPlaceholder: { 
+    width: '100%', 
+    height: '100%', 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  babyCardEmoji: { 
+    fontSize: 32 
+  },
+  babyCardInfo: { 
+    gap: 2                     // Tightened spacing
+  },
+  babyCardName: { 
+    fontSize: 18,              // Larger font for name
+    fontWeight: '700', 
+    color: '#000'              // Solid black
+  },
+  babyCardAge: { 
+    fontSize: 16, 
+    color: '#7F8C8D',          // Muted grey for age
+    fontWeight: '500' 
+  },
+  viewProfileBtn: {
+    backgroundColor: '#5499C7', // Steel blue color from image 2
+    borderRadius: 25,           // Pill shape
+    paddingHorizontal: 18, 
+    paddingVertical: 10,
+    elevation: 2,               // Subtle shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    alignSelf: 'flex-end',   // Align to left
+  },
+  viewProfileText: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: Colors.white 
+  }
 });

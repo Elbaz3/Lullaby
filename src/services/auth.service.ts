@@ -1,101 +1,183 @@
 // ─────────────────────────────────────────────
 //  LULLABY — Auth Service
-//  Set USE_MOCK = false when backend is ready.
+//
+//  USE_MOCK = true  → fake responses (offline dev)
+//  USE_MOCK = false → real backend at 63.179.148.169
+//
+//  How to switch: change the line below to false
+//  when your backend is ready, one line change.
 // ─────────────────────────────────────────────
 
 import * as SecureStore from 'expo-secure-store';
-import { apiRequest, ENDPOINTS, STORAGE_KEYS } from './api';
-import { MOCK_USER, MOCK_TOKENS, mockDelay } from '../constants/mockData';
+import { Platform } from 'react-native';
 import {
-  User, AuthTokens, LoginPayload, RegisterPayload,
-  OTPPayload, ResetPasswordPayload, ApiResponse,
+  apiRequest,
+  tokenStorage,
+  ENDPOINTS,
+  STORAGE_KEYS,
+  DeviceType,
+  ApiError,
+} from './api';
+import { MOCK_USER, mockDelay } from '../constants/mockData';
+import {
+  User,
+  AuthData,
+  LoginPayload,
+  RegisterPayload,
+  OTPPayload,
+  RequestOTPPayload,
 } from '../types';
 
-const USE_MOCK = true;
+const USE_MOCK = false; // ← flip to true for offline development
 
+// ── Device Info ───────────────────────────────
+// Sent with every auth request so backend can track sessions
+const getDeviceType = (): DeviceType =>
+  Platform.OS === 'ios' ? DeviceType.IOS : DeviceType.ANDROID;
+
+// fcmToken would come from expo-notifications in production
+// For now we send undefined and the backend marks it optional
+const getFcmToken = (): string | undefined => undefined;
+
+// ── Mock Token ────────────────────────────────
+const MOCK_TOKEN = 'mock_jwt_token_for_development';
+
+// ─────────────────────────────────────────────
+//  AUTH SERVICE
+// ─────────────────────────────────────────────
 export const authService = {
-  login: async (payload: LoginPayload): Promise<{ user: User; tokens: AuthTokens }> => {
+
+  // ── LOGIN ─────────────────────────────────
+  // Endpoint: POST /api/auth/signin
+  // Body:     { identifier, password, fcmToken?, deviceType? }
+  // Response: { data: { token, user } }
+  login: async (identifier: string, password: string): Promise<AuthData> => {
     if (USE_MOCK) {
       await mockDelay(800);
-      if (payload.password === 'wrong') throw new Error('Invalid credentials');
-      await persistTokens(MOCK_TOKENS);
-      return { user: MOCK_USER, tokens: MOCK_TOKENS };
+      if (password === 'wrong') throw new ApiError('Invalid credentials', 401);
+      await tokenStorage.save(MOCK_TOKEN);
+      return { token: MOCK_TOKEN, user: MOCK_USER };
     }
-    const res = await apiRequest<ApiResponse<{ user: User; tokens: AuthTokens }>>(
-      ENDPOINTS.AUTH_LOGIN, { method: 'POST', body: payload }
-    );
-    await persistTokens(res.data.tokens);
+
+    const payload: LoginPayload = {
+      identifier,
+      password,
+      deviceType: getDeviceType(),
+      fcmToken:   getFcmToken(),
+    };
+
+    const res = await apiRequest<AuthData>(ENDPOINTS.AUTH_SIGNIN, {
+      method:   'POST',
+      body:     payload,
+      skipAuth: true, // no token needed for login
+    });
+
+    // Save token to secure storage immediately
+    await tokenStorage.save(res.data.token);
     return res.data;
   },
 
-  register: async (payload: RegisterPayload): Promise<{ email: string }> => {
+  // ── REGISTER ──────────────────────────────
+  // Endpoint: POST /api/auth/signup
+  // Body:     { name, email, phone, password, passwordConfirm, deviceType?, fcmToken? }
+  // Response: { data: { token, user } }
+  // After success → backend sends OTP to email → navigate to OTP screen
+  register: async (payload: Omit<RegisterPayload, 'country' | 'fcmToken' | 'deviceType'>): Promise<AuthData> => {
     if (USE_MOCK) {
       await mockDelay(1000);
-      if (payload.email === 'taken@example.com') throw new Error('Email already in use');
-      return { email: payload.email };
+      if (payload.email === 'taken@example.com') throw new ApiError('Email already in use', 400);
+      return { token: MOCK_TOKEN, user: { ...MOCK_USER, name: payload.name, email: payload.email, phone: payload.phone } };
     }
-    const res = await apiRequest<ApiResponse<{ email: string }>>(
-      ENDPOINTS.AUTH_REGISTER, { method: 'POST', body: payload }
-    );
+
+    const body: RegisterPayload = {
+      ...payload,
+      country:    undefined,        // not in DB yet — keep null
+      deviceType: getDeviceType(),
+      fcmToken:   getFcmToken(),
+    };
+
+    const res = await apiRequest<AuthData>(ENDPOINTS.AUTH_SIGNUP, {
+      method:   'POST',
+      body,
+      skipAuth: true,
+    });
+
+    // Save token right after signup too
+    await tokenStorage.save(res.data.token);
     return res.data;
   },
 
-  verifyOTP: async (payload: OTPPayload): Promise<boolean> => {
+  // ── VERIFY OTP ────────────────────────────
+  // Endpoint: POST /api/auth/verify-otp
+  // Body:     { reason: "verify", otp, identifier }
+  // Used after: register (reason = "verify")
+  // Used after: forgot password (reason = "reset")
+  verifyOTP: async (otp: string, identifier: string, reason: 'verify' | 'reset'): Promise<void> => {
     if (USE_MOCK) {
       await mockDelay(700);
-      if (payload.otp !== '123456') throw new Error('Invalid or expired OTP');
-      return true;
-    }
-    const res = await apiRequest<ApiResponse<boolean>>(
-      ENDPOINTS.AUTH_VERIFY_OTP, { method: 'POST', body: payload }
-    );
-    return res.data;
-  },
-
-  resendOTP: async (email: string): Promise<void> => {
-    if (USE_MOCK) { await mockDelay(600); return; }
-    await apiRequest(ENDPOINTS.AUTH_RESEND_OTP, { method: 'POST', body: { email } });
-  },
-
-  forgotPassword: async (email: string): Promise<void> => {
-    if (USE_MOCK) { await mockDelay(800); return; }
-    await apiRequest(ENDPOINTS.AUTH_FORGOT_PASSWORD, { method: 'POST', body: { email } });
-  },
-
-  resetPassword: async (payload: ResetPasswordPayload): Promise<void> => {
-    if (USE_MOCK) {
-      await mockDelay(800);
-      if (payload.newPassword !== payload.confirmPassword) throw new Error('Passwords do not match');
+      if (otp !== '123456') throw new ApiError('Invalid or expired OTP', 400);
       return;
     }
-    await apiRequest(ENDPOINTS.AUTH_RESET_PASSWORD, { method: 'POST', body: payload });
+
+    const payload: OTPPayload = { reason, otp, identifier };
+
+    await apiRequest(ENDPOINTS.AUTH_VERIFY_OTP, {
+      method:   'POST',
+      body:     payload,
+      skipAuth: true,
+    });
   },
 
-  getMe: async (): Promise<User> => {
-    if (USE_MOCK) { await mockDelay(400); return MOCK_USER; }
-    const res = await apiRequest<ApiResponse<User>>(ENDPOINTS.AUTH_ME);
-    return res.data;
-  },
-
-  logout: async (): Promise<void> => {
-    if (!USE_MOCK) {
-      try { await apiRequest(ENDPOINTS.AUTH_LOGOUT, { method: 'POST' }); } catch {}
+  // ── REQUEST OTP ───────────────────────────
+  // Endpoint: POST /api/auth/request-otp
+  // Body:     { reason: "verify" | "reset", identifier }
+  // Used for: resend OTP, forgot password
+  requestOTP: async (identifier: string, reason: 'verify' | 'reset'): Promise<void> => {
+    if (USE_MOCK) {
+      await mockDelay(600);
+      return;
     }
-    await clearTokens();
+
+    const payload: RequestOTPPayload = { reason, identifier };
+
+    await apiRequest(ENDPOINTS.AUTH_REQUEST_OTP, {
+      method:   'POST',
+      body:     payload,
+      skipAuth: true,
+    });
   },
 
+  // ── LOGOUT ────────────────────────────────
+  // Just clears local token — no backend call needed
+  // (backend uses stateless JWT, no session to invalidate)
+  logout: async (): Promise<void> => {
+    await tokenStorage.delete();
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.USER);
+  },
+
+  // ── IS AUTHENTICATED ──────────────────────
+  // Checks if a token exists in secure storage
+  // Called on app start to decide which screen to show
   isAuthenticated: async (): Promise<boolean> => {
-    const token = await SecureStore.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+    const token = await tokenStorage.get();
     return !!token;
   },
-};
 
-const persistTokens = async (tokens: AuthTokens) => {
-  await SecureStore.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
-  await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
-};
+  // ── GET CURRENT USER ──────────────────────
+  // Reads cached user from storage (no network call)
+  // Full profile fetch would be GET /api/auth/me with Bearer token
+  getCachedUser: async (): Promise<User | null> => {
+    const raw = await SecureStore.getItemAsync(STORAGE_KEYS.USER);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as User;
+    } catch {
+      return null;
+    }
+  },
 
-const clearTokens = async () => {
-  await SecureStore.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-  await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+  // Save user to storage after login/register
+  cacheUser: async (user: User): Promise<void> => {
+    await SecureStore.setItemAsync(STORAGE_KEYS.USER, JSON.stringify(user));
+  },
 };

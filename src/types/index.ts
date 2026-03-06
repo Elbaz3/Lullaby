@@ -1,75 +1,109 @@
 // ─────────────────────────────────────────────
 //  LULLABY — TypeScript Types
+//  User shape matches real backend response
 // ─────────────────────────────────────────────
 
-// ── Auth ────────────────────────────────────
-
+// ── User ──────────────────────────────────────
+// Matches what your backend returns inside data.user
 export interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  avatar?: string;
-  createdAt: string;
+  id:      string;
+  name:    string;        // backend uses "name" not "fullName"
+  email:   string;
+  phone:   string;
+  avatar:  string | null;
+  country: string | null;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+// ── Auth ──────────────────────────────────────
+export interface AuthData {
+  token: string;
+  user:  User;
 }
 
+// Login — backend uses "identifier" (email or phone)
 export interface LoginPayload {
-  email: string;
-  password: string;
+  identifier:  string;
+  password:    string;
+  fcmToken?:   string;
+  deviceType?: string;
 }
 
+// Register
 export interface RegisterPayload {
-  fullName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
+  name:            string;
+  email:           string;
+  phone:           string;
+  password:        string;
+  passwordConfirm: string;
+  country?:        string;   // null for now — not in DB yet
+  fcmToken?:       string;
+  deviceType?:     string;
 }
 
+// OTP
 export interface OTPPayload {
-  email: string;
-  otp: string;
+  reason:     'verify' | 'reset';
+  otp:        string;
+  identifier: string; // email or phone
+}
+
+export interface RequestOTPPayload {
+  reason:     'verify' | 'reset';
+  identifier: string;
 }
 
 export interface ResetPasswordPayload {
-  email: string;
-  otp: string;
-  newPassword: string;
+  newPassword:     string;
   confirmPassword: string;
 }
 
-// ── Baby ────────────────────────────────────
-
-export type BabyGender = 'boy' | 'girl';
+// ── Baby ──────────────────────────────────────
+export type Gender    = 'boy' | 'girl';
+export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 
 export interface Baby {
-  id: string;
-  name: string;
-  gender: BabyGender;
-  dateOfBirth: string; // ISO string
-  weight?: number; // kg
-  height?: number; // cm
-  bloodType?: string;
-  parentId: string;
-  deviceId?: string;
-  avatar?: string;
-  createdAt: string;
+  id:          string;
+  parentId:    string;
+  name:        string;
+  gender:      Gender;
+  dateOfBirth: string;      // ISO date string
+  weight?:     number;      // kg
+  height?:     number;      // cm
+  bloodType?:  BloodType;
+  deviceId?:   string;
+  photoUrl?:   string;
+  createdAt:   string;
 }
 
 export interface AddBabyPayload {
-  name: string;
-  gender: BabyGender;
+  name:        string;
+  gender:      Gender;
   dateOfBirth: string;
-  weight?: number;
-  height?: number;
-  bloodType?: string;
+  weight?:     number;
+  height?:     number;
+  bloodType?:  BloodType;
 }
 
-// ── Cry Detection ────────────────────────────
+// ── Sensors ───────────────────────────────────
+export interface AirQuality {
+  aqi:         number;
+  humidity:    number;
+  temperature: number;
+  co2:         number;
+}
 
+export interface SensorReading {
+  id:            string;
+  babyId:        string;
+  temperature:   number;
+  heartRate:     number;
+  breathingRate: number;
+  oxygenLevel:   number;
+  airQuality:    AirQuality;
+  timestamp:     string;
+}
+
+// ── Cry Detection ─────────────────────────────
 export type CryReason =
   | 'hungry'
   | 'pain'
@@ -81,148 +115,59 @@ export type CryReason =
   | 'unknown';
 
 export interface CryEvent {
-  id: string;
-  babyId: string;
-  reason: CryReason;
-  confidence: number; // 0-100
-  duration: number; // seconds
-  timestamp: string; // ISO string
-  audioClipUrl?: string;
-  notes?: string;
+  id:         string;
+  babyId:     string;
+  reason:     CryReason;
+  confidence: number;     // 0-1
+  duration:   number;     // seconds
+  timestamp:  string;
+  audioUrl?:  string;
 }
 
-export interface CryReasonMeta {
-  reason: CryReason;
-  label: string;
-  emoji: string;
-  color: string;
-  description: string;
-  suggestion: string;
-}
-
-// ── Sensors ─────────────────────────────────
-
-export type SensorStatus = 'connected' | 'disconnected' | 'warning' | 'error';
-
-export interface SensorReading {
-  id: string;
-  babyId: string;
-  timestamp: string;
-  temperature: number; // °C
-  heartRate: number; // bpm
-  breathingRate: number; // breaths/min
-  oxygenLevel: number; // SpO2 %
-  airQuality: AirQualityReading;
-}
-
-export interface AirQualityReading {
-  co2: number; // ppm
-  humidity: number; // %
-  temperature: number; // °C
-  pm25: number; // μg/m³
-  aqi: number; // Air Quality Index 0-500
-  status: 'good' | 'moderate' | 'poor' | 'hazardous';
-}
-
-export interface Sensor {
-  id: string;
-  type: 'temperature' | 'heart_rate' | 'breathing' | 'microphone' | 'air_quality';
-  label: string;
-  status: SensorStatus;
+// ── Device ────────────────────────────────────
+export interface DeviceSensor {
+  type:      string;
+  status:    'active' | 'inactive' | 'error';
   lastReading?: string;
-  batteryLevel?: number;
 }
 
 export interface Device {
-  id: string;
-  name: string;
-  macAddress: string;
-  firmwareVersion: string;
+  id:           string;
+  name:         string;
+  model:        string;
   batteryLevel: number;
-  isConnected: boolean;
-  babyId?: string;
-  sensors: Sensor[];
+  isConnected:  boolean;
+  lastSeen:     string;
+  sensors:      DeviceSensor[];
 }
 
-// ── Reports ─────────────────────────────────
-
+// ── Reports ───────────────────────────────────
 export interface DailyReport {
-  id: string;
-  babyId: string;
-  date: string; // YYYY-MM-DD
+  babyId:         string;
+  date:           string;
   totalCryEvents: number;
-  avgHeartRate: number;
   avgTemperature: number;
-  avgOxygenLevel: number;
-  avgBreathingRate: number;
-  sleepDuration: number; // minutes
-  avgAirQuality: number; // AQI
-  cryReasonBreakdown: { reason: CryReason; count: number }[];
-  hourlyData: HourlyDataPoint[];
+  avgHeartRate:   number;
+  avgBreathing:   number;
+  avgOxygen:      number;
+  totalSleepHours: number;
+  airQualityAvg:  number;
+  overallScore:   number;
+  hourlyData:     { hour: number; cryCount: number; avgTemp: number }[];
 }
 
-export interface HourlyDataPoint {
-  hour: number; // 0-23
-  heartRate: number;
-  temperature: number;
-  cryCount: number;
-}
-
-// ── API ─────────────────────────────────────
-
+// ── API Helpers ───────────────────────────────
 export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
+  success:    boolean;
+  statusCode: number;
+  message:    string;
+  data:       T;
 }
 
 export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
+  items:    T[];
+  total:    number;
+  page:     number;
   pageSize: number;
-  hasMore: boolean;
+  hasMore:  boolean;
 }
-
-export interface ApiError {
-  message: string;
-  code?: string;
-  statusCode?: number;
-}
-
-// ── Navigation ──────────────────────────────
-
-export type RootStackParamList = {
-  Auth: undefined;
-  App: undefined;
-  Onboarding: undefined;
-};
-
-export type AuthStackParamList = {
-  Splash: undefined;
-  Welcome: undefined;
-  Login: undefined;
-  Register: undefined;
-  OTPVerification: { email: string; mode: 'register' | 'forgot' };
-  NewPassword: { email: string; otp: string };
-  VerificationSuccess: undefined;
-};
-
-export type AppTabParamList = {
-  Home: undefined;
-  Babies: undefined;
-  CryDetection: undefined;
-  Reports: undefined;
-  Settings: undefined;
-};
-
-export type BabiesStackParamList = {
-  BabyList: undefined;
-  AddBaby: undefined;
-  BabyDetail: { babyId: string };
-};
-
-export type HomeStackParamList = {
-  HomeMain: undefined;
-  SensorDetail: { sensorType: string };
-};

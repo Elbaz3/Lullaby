@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.lullaby.app"
+      "bundleIdentifier": "com.lullaby.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,6 +31,12 @@
     },
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "affd5a2f-b80f-48fa-abc4-deb0781c2a1b"
+      }
+    },
+    "owner": "elbaz203s-organization"
   }
 }

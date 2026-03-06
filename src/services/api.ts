@@ -1,57 +1,91 @@
 // ─────────────────────────────────────────────
-//  LULLABY — API Client (fetch-based, no axios)
-//  Compatible with React Native New Architecture
+//  LULLABY — API Client
+//  Base URL: 63.179.148.169
+//  Auth: Single JWT token via Bearer header
 // ─────────────────────────────────────────────
 
 import * as SecureStore from 'expo-secure-store';
 
-// TODO: Replace with your actual backend URL
-export const BASE_URL = 'https://your-backend-api.com/api/v1';
+export const BASE_URL = 'http://63.179.148.169/api';
 
+// ── Endpoints ─────────────────────────────────
 export const ENDPOINTS = {
-  AUTH_LOGIN: '/auth/login',
-  AUTH_REGISTER: '/auth/register',
-  AUTH_LOGOUT: '/auth/logout',
-  AUTH_REFRESH: '/auth/refresh',
-  AUTH_VERIFY_OTP: '/auth/verify-otp',
-  AUTH_RESEND_OTP: '/auth/resend-otp',
-  AUTH_FORGOT_PASSWORD: '/auth/forgot-password',
-  AUTH_RESET_PASSWORD: '/auth/reset-password',
-  AUTH_ME: '/auth/me',
-  BABIES: '/babies',
-  BABY_BY_ID: (id: string) => `/babies/${id}`,
-  BABY_SENSORS: (id: string) => `/babies/${id}/sensors`,
-  CRY_EVENTS: (babyId: string) => `/babies/${babyId}/cry-events`,
-  CRY_LATEST: (babyId: string) => `/babies/${babyId}/cry-events/latest`,
-  SENSOR_LATEST: (babyId: string) => `/babies/${babyId}/sensors/latest`,
+  // Auth
+  AUTH_SIGNUP:      '/auth/signup',
+  AUTH_SIGNIN:      '/auth/signin',
+  AUTH_VERIFY_OTP:  '/auth/verify-otp',
+  AUTH_REQUEST_OTP: '/auth/request-otp',
+  AUTH_ME:          '/auth/me',
+
+  // Babies
+  BABIES:           '/babies',
+  BABY_BY_ID:       (id: string) => `/babies/${id}`,
+  BABY_SENSORS:     (id: string) => `/babies/${id}/sensors`,
+
+  // Cry
+  CRY_EVENTS:  (babyId: string) => `/babies/${babyId}/cry-events`,
+  CRY_LATEST:  (babyId: string) => `/babies/${babyId}/cry-events/latest`,
+
+  // Sensors
+  SENSOR_LATEST:  (babyId: string) => `/babies/${babyId}/sensors/latest`,
   SENSOR_HISTORY: (babyId: string) => `/babies/${babyId}/sensors/history`,
-  DEVICES: '/devices',
-  DEVICE_PAIR: '/devices/pair',
+
+  // Device
+  DEVICES:      '/devices',
+  DEVICE_PAIR:  '/devices/pair',
   DEVICE_BY_ID: (id: string) => `/devices/${id}`,
-  REPORTS_DAILY: (babyId: string) => `/babies/${babyId}/reports/daily`,
+
+  // Reports
+  REPORTS_DAILY:  (babyId: string) => `/babies/${babyId}/reports/daily`,
   REPORTS_WEEKLY: (babyId: string) => `/babies/${babyId}/reports/weekly`,
-  NOTIFICATIONS: '/notifications',
-  NOTIFICATION_READ: (id: string) => `/notifications/${id}/read`,
+
+  // Vaccinations
+  VACCINATIONS: (babyId: string) => `/babies/${babyId}/vaccinations`,
+
+  // Assistant
+  ASSISTANT_CHAT: '/assistant/chat',
 } as const;
 
+// ── Storage Keys ──────────────────────────────
 export const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'lullaby_access_token',
-  REFRESH_TOKEN: 'lullaby_refresh_token',
-  USER: 'lullaby_user',
+  TOKEN: 'lullaby_token',         // single JWT
+  USER:  'lullaby_user',          // serialized user object
 } as const;
 
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  body?: object;
-  params?: Record<string, string | number>;
+// ── Device Type Enum ──────────────────────────
+// Must match your backend DeviceType enum
+export enum DeviceType {
+  IOS     = 'ios',
+  ANDROID = 'android',
+  WEB     = 'web',
 }
 
+// ── Request Options ───────────────────────────
+interface RequestOptions {
+  method?:    'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body?:      object;
+  params?:    Record<string, string | number>;
+  skipAuth?:  boolean; // true for login/register
+}
+
+// ── Server Response Shape ─────────────────────
+// Every response from your NestJS backend follows this shape:
+// { success, statusCode, message, data }
+export interface ServerResponse<T> {
+  success:    boolean;
+  statusCode: number;
+  message:    string;
+  data:       T;
+}
+
+// ── Core Request Function ─────────────────────
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {}
-): Promise<T> {
-  const { method = 'GET', body, params } = options;
+): Promise<ServerResponse<T>> {
+  const { method = 'GET', body, params, skipAuth = false } = options;
 
+  // Build URL
   let url = `${BASE_URL}${endpoint}`;
   if (params) {
     const query = Object.entries(params)
@@ -60,68 +94,74 @@ export async function apiRequest<T>(
     url = `${url}?${query}`;
   }
 
+  // Build headers
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Accept: 'application/json',
+    'Accept':       'application/json',
   };
 
-  const token = await SecureStore.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (response.status === 401) {
-    const refreshed = await tryRefreshToken();
-    if (refreshed) {
-      const newToken = await SecureStore.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-      headers['Authorization'] = `Bearer ${newToken}`;
-      const retry = await fetch(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (!retry.ok) throw new ApiError('Session expired', 401);
-      return retry.json();
+  // Attach token if not a public endpoint
+  if (!skipAuth) {
+    const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN);
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    throw new ApiError('Session expired', 401);
   }
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new ApiError(err.message ?? `Error ${response.status}`, response.status);
-  }
-
-  if (response.status === 204) return undefined as T;
-  return response.json();
-}
-
-async function tryRefreshToken(): Promise<boolean> {
+  // Make request
+  let response: Response;
   try {
-    const refreshToken = await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-    if (!refreshToken) return false;
-    const response = await fetch(`${BASE_URL}${ENDPOINTS.AUTH_REFRESH}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+    response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
     });
-    if (!response.ok) return false;
-    const data = await response.json();
-    await SecureStore.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, data.data.accessToken);
-    await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, data.data.refreshToken);
-    return true;
-  } catch {
-    return false;
+  } catch (networkError) {
+    // No internet or server unreachable
+    throw new ApiError('No internet connection. Please check your network.', 0);
   }
+
+  // Parse body — NestJS always returns JSON
+  let json: any;
+  try {
+    json = await response.json();
+  } catch {
+    throw new ApiError('Server returned an unexpected response.', response.status);
+  }
+
+  // Handle HTTP errors
+  if (!response.ok) {
+    // NestJS error shape: { message: string | string[], statusCode }
+    const msg = Array.isArray(json?.message)
+      ? json.message[0]           // validation errors come as array
+      : json?.message ?? `Request failed (${response.status})`;
+    throw new ApiError(msg, response.status);
+  }
+
+  return json as ServerResponse<T>;
 }
 
+// ── Token Helpers ─────────────────────────────
+export const tokenStorage = {
+  save:   (token: string) => SecureStore.setItemAsync(STORAGE_KEYS.TOKEN, token),
+  get:    ()              => SecureStore.getItemAsync(STORAGE_KEYS.TOKEN),
+  delete: ()              => SecureStore.deleteItemAsync(STORAGE_KEYS.TOKEN),
+};
+
+// ── Custom Error Class ────────────────────────
 export class ApiError extends Error {
   statusCode: number;
+
   constructor(message: string, statusCode: number) {
     super(message);
+    this.name = 'ApiError';
     this.statusCode = statusCode;
   }
+
+  // Helpers for common checks
+  get isNetworkError()       { return this.statusCode === 0; }
+  get isUnauthorized()       { return this.statusCode === 401; }
+  get isValidationError()    { return this.statusCode === 400; }
+  get isNotFound()           { return this.statusCode === 404; }
+  get isServerError()        { return this.statusCode >= 500; }
 }

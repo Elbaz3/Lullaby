@@ -10,7 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../store/authStore';
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuthStore } from "../../store/authStore";
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { BabyAvatar } from '../../components/BabyAvatar';
 
@@ -59,6 +61,7 @@ const SettingRow: React.FC<{
 );
 
 export const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { user, logout } = useAuthStore();
   const [notifications, setNotifications] = React.useState(true);
   const [cryAlerts, setCryAlerts] = React.useState(true);
@@ -88,10 +91,10 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.fullName ?? 'User'}</Text>
+            <Text style={styles.profileName}>{user?.name ?? 'User'}</Text>
             <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
           </View>
-          <TouchableOpacity style={styles.editBtn}>
+          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate("Profile")}>
             <Ionicons name="pencil-outline" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>

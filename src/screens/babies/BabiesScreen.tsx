@@ -1,11 +1,14 @@
+// ─────────────────────────────────────────────
+//  BABIES SCREEN
+//  Shows baby card matching the design mockup:
+//  photo, name, age calculated from DOB
+//  "Add more children" — disabled (coming soon)
+// ─────────────────────────────────────────────
+
 import React, { useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
+  View, Text, StyleSheet, ScrollView,
+  TouchableOpacity, Image, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,232 +16,159 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useBabyStore } from '../../store/babyStore';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
-import { BabyAvatar } from '../../components/BabyAvatar';
-import { Button } from '../../components/ui/Button';
-import { EmptyState } from '../../components/ui/Card';
 import { Baby } from '../../types';
 
+const { width } = Dimensions.get('window');
 type Nav = NativeStackNavigationProp<any>;
 
-// ── Helpers ───────────────────────────────────
-
-const getAgeString = (dob: string): string => {
-  const diff = Date.now() - new Date(dob).getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days < 30) return `${days} days old`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months > 1 ? 's' : ''} old`;
-  const years = Math.floor(months / 12);
-  const rem = months % 12;
-  return rem > 0 ? `${years}y ${rem}mo old` : `${years} year${years > 1 ? 's' : ''} old`;
+// ── Age calculation ───────────────────────────
+const calcAge = (dob: string): string => {
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return '';
+  const now    = new Date();
+  const days   = Math.floor((now.getTime() - birth.getTime()) / 86400000);
+  if (days < 0)  return 'Future date';
+  if (days === 0) return 'Newborn';
+  const months = Math.floor(days / 30.44);
+  const years  = Math.floor(days / 365.25);
+  if (days < 7)   return `${days} day${days > 1 ? 's' : ''}`;
+  if (days < 30)  return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''}`;
+  if (years < 1) {
+    const remWeeks = Math.floor((days - months * 30.44) / 7);
+    return remWeeks > 0
+      ? `${months}Months,${remWeeks}Weeks`
+      : `${months}Month${months > 1 ? 's' : ''}`;
+  }
+  const remMonths = months - years * 12;
+  return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}yr`;
 };
 
 // ── Baby Card ─────────────────────────────────
+const BabyCard: React.FC<{ baby: Baby; onPress: () => void }> = ({ baby, onPress }) => {
+  const age = calcAge(baby.dateOfBirth);
 
-const BabyCard: React.FC<{ baby: Baby; isActive: boolean; onPress: () => void; onDelete: () => void }> = ({
-  baby,
-  isActive,
-  onPress,
-  onDelete,
-}) => (
-  <TouchableOpacity
-    style={[styles.babyCard, isActive && styles.babyCardActive, Shadows.sm]}
-    onPress={onPress}
-    activeOpacity={0.85}
-  >
-    <BabyAvatar baby={baby} size={60} />
-    <View style={styles.babyInfo}>
-      <View style={styles.babyNameRow}>
-        <Text style={styles.babyName}>{baby.name}</Text>
-        {isActive && (
-          <View style={styles.activePill}>
-            <View style={styles.activeDot} />
-            <Text style={styles.activePillText}>Active</Text>
-          </View>
+  return (
+    <View style={[styles.card, Shadows.md]}>
+      {/* Photo */}
+      <View style={styles.cardPhotoWrap}>
+        {baby.photoUrl ? (
+          <Image source={{ uri: baby.photoUrl }} style={styles.cardPhoto} />
+        ) : (
+          <Image source={require('../../../assets/baby.jpg')} style={styles.cardPhoto} />
+          
         )}
       </View>
-      <Text style={styles.babyAge}>{getAgeString(baby.dateOfBirth)}</Text>
-      <View style={styles.babyMeta}>
-        {baby.weight && (
-          <Text style={styles.babyMetaText}>⚖️ {baby.weight} kg</Text>
-        )}
-        {baby.bloodType && (
-          <Text style={styles.babyMetaText}>🩸 {baby.bloodType}</Text>
-        )}
-        <Text style={styles.babyMetaText}>
-          {baby.deviceId ? '📡 Connected' : '📡 No device'}
-        </Text>
+
+      {/* Info */}
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardName}>{baby.name}</Text>
+        <Text style={styles.cardAge}>{age}</Text>
       </View>
+
+      {/* View Profile */}
+      <TouchableOpacity
+        style={styles.viewProfileBtn}
+        onPress={onPress}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.viewProfileText}>View Profile</Text>
+      </TouchableOpacity>
     </View>
-    <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-      <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-    </TouchableOpacity>
-  </TouchableOpacity>
-);
+  );
+};
 
-// ── Babies Screen ─────────────────────────────
-
+// ── Main Screen ───────────────────────────────
 export const BabiesScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const { babies, activeBabyId, setActiveBaby, fetchBabies, deleteBaby, isLoading } = useBabyStore();
+  const { babies, fetchBabies } = useBabyStore();
 
-  useEffect(() => {
-    fetchBabies();
-  }, []);
-
-  const handleDelete = (baby: Baby) => {
-    Alert.alert(
-      `Remove ${baby.name}?`,
-      'This will permanently delete this baby profile and all associated data.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteBaby(baby.id),
-        },
-      ]
-    );
-  };
+  useEffect(() => { fetchBabies(); }, []);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Babies</Text>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => navigation.navigate('AddBaby')}
-        >
-          <Ionicons name="add" size={22} color={Colors.primary} />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      >
-        {babies.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <EmptyState
-              emoji="👶"
-              title="No babies yet"
-              subtitle="Start by adding your child to monitor their health, daily routine, and vaccinations with ease."
-            />
-            <Button
-              label="Add New Baby"
-              onPress={() => navigation.navigate('AddBaby')}
-            />
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+
+        {/* Baby cards */}
+        {babies.map(baby => (
+          <BabyCard
+            key={baby.id}
+            baby={baby}
+            onPress={() => navigation.navigate('BabyDetail', { babyId: baby.id })}
+          />
+        ))}
+
+        {/* Add more children — disabled coming soon */}
+        <TouchableOpacity style={styles.addMoreBtn} disabled activeOpacity={1}>
+          <View style={styles.addMoreLeft}>
+            <View style={styles.addMoreIcon}>
+              <Ionicons name="add" size={22} color={Colors.textMuted} />
+            </View>
+            <View>
+              <Text style={styles.addMoreTitle}>Add Another Baby</Text>
+              <Text style={styles.addMoreSub}>Multiple children support</Text>
+            </View>
           </View>
-        ) : (
-          babies.map((baby) => (
-            <BabyCard
-              key={baby.id}
-              baby={baby}
-              isActive={baby.id === activeBabyId}
-              onPress={() => setActiveBaby(baby.id)}
-              onDelete={() => handleDelete(baby)}
-            />
-          ))
-        )}
+          <View style={styles.comingSoonTag}>
+            <Text style={styles.comingSoonText}>Coming Soon</Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={{ height: Spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bgMain },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
+  safe:       { flex: 1, backgroundColor: Colors.bgMain },
+  header:     { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg },
+  headerTitle:{ fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark },
+  container:  { padding: Spacing.xl, gap: Spacing.lg },
+
+  // Baby card — matches screenshot design
+  card:       {
+    backgroundColor: Colors.white, borderRadius: Radius.xl,
+    padding: Spacing.lg, flexDirection: 'row',
+    alignItems: 'center', gap: Spacing.lg,
   },
-  headerTitle: {
-    fontSize: FontSize.xxl,
-    fontWeight: FontWeight.bold,
-    color: Colors.textDark,
+  cardPhotoWrap: {
+    width: 72, height: 72, borderRadius: 36, overflow: 'hidden',
+    borderWidth: 2, borderColor: Colors.primarySoft,
   },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  cardPhoto:    { width: '100%', height: '100%' },
+  cardPhotoPlaceholder: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  cardPhotoEmoji: { fontSize: 32 },
+  cardInfo:     { flex: 1, gap: 4 },
+  cardName:     { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textDark },
+  cardAge:      { fontSize: FontSize.sm, color: Colors.textMuted },
+  viewProfileBtn: {
+    backgroundColor: Colors.primary, borderRadius: Radius.full,
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
   },
-  list: {
-    padding: Spacing.xl,
-    gap: Spacing.md,
-    paddingBottom: Spacing.huge,
+  viewProfileText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.white },
+
+  // Add more — disabled
+  addMoreBtn:  {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.white, borderRadius: Radius.xl,
+    padding: Spacing.lg, opacity: 0.6,
+    borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',
   },
-  babyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.md,
+  addMoreLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  addMoreIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.bgInput, alignItems: 'center', justifyContent: 'center',
   },
-  babyCardActive: {
-    borderWidth: 2,
-    borderColor: Colors.primary,
+  addMoreTitle:    { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.textMedium },
+  addMoreSub:      { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  comingSoonTag:   {
+    backgroundColor: Colors.bgInput, borderRadius: Radius.full,
+    paddingHorizontal: 10, paddingVertical: 4,
   },
-  babyInfo: { flex: 1, gap: 4 },
-  babyNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  babyName: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: Colors.textDark,
-  },
-  activePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.successSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.success,
-  },
-  activePillText: {
-    fontSize: 10,
-    fontWeight: FontWeight.semibold,
-    color: Colors.success,
-  },
-  babyAge: {
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-  },
-  babyMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginTop: 4,
-  },
-  babyMetaText: {
-    fontSize: FontSize.xs,
-    color: Colors.textMedium,
-  },
-  deleteBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.dangerSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyWrap: {
-    gap: Spacing.xl,
-    marginTop: Spacing.xxl,
-  },
+  comingSoonText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textMuted },
 });
