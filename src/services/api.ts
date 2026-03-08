@@ -118,7 +118,11 @@ export async function apiRequest<T>(
     });
   } catch (networkError) {
     // No internet or server unreachable
-    throw new ApiError('No internet connection. Please check your network.', 0);
+    // throw new ApiError('No internet connection. Please check your network.', 0);
+      throw new ApiError(
+    `Fetch failed: ${networkError?.message ?? networkError}`,
+    0
+  );
   }
 
   // Parse body — NestJS always returns JSON
