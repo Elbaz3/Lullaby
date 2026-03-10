@@ -58,30 +58,38 @@ export interface ResetPasswordPayload {
 }
 
 // ── Baby ──────────────────────────────────────
-export type Gender    = 'boy' | 'girl';
+export type Gender    = 'male' | 'female';    // backend uses male/female
 export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 
 export interface Baby {
-  id:          string;
-  parentId:    string;
+  // Backend fields — exact names from API response
+  _id?:        string;       // MongoDB _id
+  id:          string;       // same as _id (backend sends both)
+  identity?:   string;       // parentId in backend
   name:        string;
   gender:      Gender;
-  dateOfBirth: string;      // ISO date string
-  weight?:     number;      // kg
-  height?:     number;      // cm
+  dateBirth:   string;       // ISO date string  e.g. "2025-02-10T00:00:00.000Z"
+  height?:     number;
+  weight?:     number;       // GET returns 'weight' (fixed in backend)
+  wight?:      number;       // POST/PATCH sends 'wight' (backend typo — keep for writes)
   bloodType?:  BloodType;
+  avatar?:     string;       // full URL e.g. "http://63.179.148.169/uploads/..."
   deviceId?:   string;
-  photoUrl?:   string;
-  createdAt:   string;
+  predictions?: any[];
+  createdAt?:  string;
+  updatedAt?:  string;
+  __v?:        number;
 }
 
+// What we send TO the backend
 export interface AddBabyPayload {
-  name:        string;
-  gender:      Gender;
-  dateOfBirth: string;
-  weight?:     number;
-  height?:     number;
-  bloodType?:  BloodType;
+  name:       string;
+  gender:     Gender;       // 'male' | 'female'
+  dateBirth:  string;       // format: YYYY-MM-DD
+  height?:    number;
+  wight?:     number;       // ⚠️ backend typo — must match exactly
+  bloodType?: string;
+  avatar?:    string;       // handled separately as multipart
 }
 
 // ── Sensors ───────────────────────────────────
@@ -171,3 +179,30 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   hasMore:  boolean;
 }
+
+// ── Navigation Param Lists ────────────────────
+export type AuthStackParamList = {
+  Splash:              undefined;
+  Welcome:             undefined;
+  Login:               undefined;
+  Register:            undefined;
+  OTPVerification:     { identifier: string; reason: 'verify' | 'reset'; mode: 'register' | 'forgot' };
+  ForgotPassword:      undefined;
+  NewPassword:         { identifier: string; otp: string };
+  VerificationSuccess: undefined;
+};
+
+export type AppStackParamList = {
+  Home:        undefined;
+  Babies:      undefined;
+  BabyDetail:  { babyId: string };
+  AddBaby:     { babyId?: string } | undefined;
+  Vaccination: { babyId: string };
+  Reports:     undefined;
+  Settings:    undefined;
+  Profile:     undefined;
+  ChangePassword: undefined;
+  Notifications:  undefined;
+  Assistant:   undefined;
+  CryDetection: undefined;
+};

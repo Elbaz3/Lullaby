@@ -113,7 +113,7 @@ export const HomeScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{greeting}</Text>
+            <Text style={styles.greeting}>{greeting} 👋</Text>
             <Text style={styles.name}>HI,{firstName}</Text>
           </View>
           <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("Notifications")}>
@@ -122,38 +122,37 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-{/* Baby Card — Updated to match Image 2 */}
-{activeBaby && (
-  <View style={styles.babyCard}>
-    <View style={styles.babyCardLeft}>
-      {/* Photo with border */}
-      <View style={styles.babyCardPhotoWrap}>
-        {activeBaby.photoUrl ? (
-          <Image source={{ uri: activeBaby.photoUrl }} style={styles.babyCardPhoto} />
-        ) : (
-
-          <Image source={require('../../../assets/baby.jpg')} style={styles.babyCardPhoto} />
-
+        {/* Baby Card — matches design mockup */}
+        {activeBaby && (
+          <View style={[styles.babyCard, Shadows.md]}>
+            <View style={styles.babyCardLeft}>
+              {/* Photo */}
+              <View style={styles.babyCardPhotoWrap}>
+                {activeBaby.avatar ? (
+                  <Image source={{ uri: activeBaby.avatar }} style={styles.babyCardPhoto} />
+                ) : (
+                  <View style={[styles.babyCardPhotoPlaceholder, { backgroundColor: activeBaby.gender === 'male' ? '#DBEAFE' : '#FCE7F3' }]}>
+                    <Text style={styles.babyCardEmoji}>{activeBaby.gender === 'male' ? '👦' : '👧'}</Text>
+                  </View>
+                )}
+              </View>
+              {/* Info */}
+              <View style={styles.babyCardInfo}>
+                <Text style={styles.babyCardName}>{activeBaby.name}</Text>
+                <Text style={styles.babyCardAge}>{calcBabyAge(activeBaby.dateBirth)}</Text>
+              </View>
+            </View>
+            {/* View Profile */}
+            <TouchableOpacity
+              style={styles.viewProfileBtn}
+              onPress={() => navigation.navigate('Babies')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.viewProfileText}>View Profile</Text>
+            </TouchableOpacity>
+          </View>
         )}
-      </View>
 
-      {/* Info: Name and Age */}
-      <View style={styles.babyCardInfo}>
-        <Text style={styles.babyCardName}>{activeBaby.name}</Text>
-        <Text style={styles.babyCardAge}>{calcBabyAge(activeBaby.dateOfBirth)}</Text>
-      </View>
-    </View>
-
-    {/* View Profile Button */}
-    <TouchableOpacity
-      style={styles.viewProfileBtn}
-      onPress={() => navigation.navigate('Babies')}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.viewProfileText}>View Profile</Text>
-    </TouchableOpacity>
-  </View>
-)}
         {/* Status Banner */}
         {activeBaby && (
           <View style={[styles.statusBanner, Shadows.md]}>
@@ -448,75 +447,30 @@ const styles = StyleSheet.create({
   },
 
   // ── New Baby Card ─────────────────────────
-// ── Changed Lines in StyleSheet ─────────────────────────
-
   babyCard: {
-    backgroundColor: '#F0F9FF', // Light blue background from image 2
-    borderRadius: 20,           // More rounded corners
-    padding: 16,
-    flexDirection: 'column',
-    alignItems: 'flex-start',
+    backgroundColor: Colors.white,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1.5,
-    borderColor: '#3498db',     // Vibrant blue border
-    marginVertical: 10,
-    gap: 7,                   // Added gap between elements
+    borderColor: Colors.primarySoft,
   },
-  babyCardLeft: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12, 
-    flex: 1 
-  },
+  babyCardLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
   babyCardPhotoWrap: {
-    width: 80,                 // Slightly larger
-    height: 80, 
-    borderRadius: 40,
-    overflow: 'hidden', 
-    borderWidth: 1, 
-    borderColor: '#BDC3C7',    // Grey border around image
+    width: 72, height: 72, borderRadius: 36,
+    overflow: 'hidden', borderWidth: 2, borderColor: Colors.primarySoft,
   },
-  babyCardPhoto: { 
-    width: '100%', 
-    height: '100%' 
-  },
-  babyCardPhotoPlaceholder: { 
-    width: '100%', 
-    height: '100%', 
-    alignItems: 'center', 
-    justifyContent: 'center' 
-  },
-  babyCardEmoji: { 
-    fontSize: 32 
-  },
-  babyCardInfo: { 
-    gap: 2                     // Tightened spacing
-  },
-  babyCardName: { 
-    fontSize: 18,              // Larger font for name
-    fontWeight: '700', 
-    color: '#000'              // Solid black
-  },
-  babyCardAge: { 
-    fontSize: 16, 
-    color: '#7F8C8D',          // Muted grey for age
-    fontWeight: '500' 
-  },
+  babyCardPhoto:            { width: '100%', height: '100%' },
+  babyCardPhotoPlaceholder: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  babyCardEmoji:            { fontSize: 32 },
+  babyCardInfo:             { gap: 4 },
+  babyCardName:             { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textDark },
+  babyCardAge:              { fontSize: FontSize.sm, color: Colors.textMuted },
   viewProfileBtn: {
-    backgroundColor: '#5499C7', // Steel blue color from image 2
-    borderRadius: 25,           // Pill shape
-    paddingHorizontal: 18, 
-    paddingVertical: 10,
-    elevation: 2,               // Subtle shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    alignSelf: 'flex-end',   // Align to left
+    backgroundColor: Colors.primary, borderRadius: Radius.full,
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
   },
-  viewProfileText: { 
-    fontSize: 14, 
-    fontWeight: '600', 
-    color: Colors.white 
-  }
+  viewProfileText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.white },
 });

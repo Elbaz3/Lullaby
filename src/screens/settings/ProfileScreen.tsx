@@ -17,7 +17,7 @@ type Nav = NativeStackNavigationProp<any>;
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { user } = useAuthStore();
-  const [fullName, setFullName] = useState(user?.fullName ?? '');
+  const [fullName, setFullName] = useState(user?.name ?? '');
   const [email] = useState(user?.email ?? '');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);

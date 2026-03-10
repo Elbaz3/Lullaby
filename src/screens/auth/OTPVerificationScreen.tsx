@@ -78,23 +78,23 @@ export const OTPVerificationScreen: React.FC = () => {
   const otp = digits.join('');
 
   // ── Submit ────────────────────────────────
-  const handleVerify = async () => {
-    if (otp.length < OTP_LENGTH) return;
-    try {
+const handleVerify = async () => {
+  if (otp.length < OTP_LENGTH) return;
+  try {
+    if (reason === 'reset') {
+      // Forgot password: pass identifier + otp to NewPassword
+      navigation.navigate('NewPassword', { identifier, otp });
+    } else {
+      // Registration verify: call verifyOTP then go to onboarding
       await verifyOTP(otp, identifier, reason);
-      if (reason === 'verify') {
-        // Account verified — go to success screen
-        navigation.navigate('VerificationSuccess');
-      } else {
-        // Password reset OTP verified — go to new password
-        navigation.navigate('NewPassword', { identifier });
-      }
-    } catch {
-      // Error in store, shown below
-      setDigits(Array(OTP_LENGTH).fill('')); // clear boxes on wrong OTP
-      inputRefs.current[0]?.focus();
-    }
-  };
+      navigation.navigate('OnboardingWelcome');
+    } // Removed the extra }); that was here
+  } catch (err) { // Added 'err' or just catch {}
+    // Error in store, shown below
+    setDigits(Array(OTP_LENGTH).fill('')); // clear boxes on wrong OTP
+    inputRefs.current[0]?.focus();
+  }
+};
 
   // ── Resend ────────────────────────────────
   const handleResend = async () => {
@@ -194,7 +194,7 @@ export const OTPVerificationScreen: React.FC = () => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: Colors.white },

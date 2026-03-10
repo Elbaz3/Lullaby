@@ -158,6 +158,47 @@ export const authService = {
   // ── IS AUTHENTICATED ──────────────────────
   // Checks if a token exists in secure storage
   // Called on app start to decide which screen to show
+
+  // ── FORGOT PASSWORD ────────────────────────
+  // Step 1: POST /auth/forgot-password
+  // Sends OTP to identifier (email or phone)
+  forgotPassword: async (identifier: string): Promise<void> => {
+    await apiRequest(ENDPOINTS.FORGOT_PASSWORD, {
+      method: 'POST',
+      body:   { identifier },
+    });
+  },
+
+  // ── VERIFY FORGOT PASSWORD ─────────────────
+  // Step 2: POST /auth/verify-forgot-password
+  // Verifies OTP and sets new password in one call
+  verifyForgotPassword: async (payload: {
+    identifier:      string;
+    otp:             string;
+    password:        string;
+    passwordConfirm: string;
+  }): Promise<void> => {
+    await apiRequest(ENDPOINTS.VERIFY_FORGOT_PASSWORD, {
+      method: 'POST',
+      body:   payload,
+    });
+  },
+
+  // ── CHANGE PASSWORD ───────────────────────
+  // For logged in users who want to change password
+  // Endpoint: POST /auth/change-password
+  // Body:     { currentPassword, newPassword, newPasswordConfirm }
+  changePassword: async (payload: {
+    currentPassword:    string;
+    newPassword:        string;
+    newPasswordConfirm: string;
+  }): Promise<void> => {
+    await apiRequest(ENDPOINTS.CHANGE_PASSWORD, {
+      method: 'POST',
+      body:   payload,
+    });
+  },
+
   isAuthenticated: async (): Promise<boolean> => {
     const token = await tokenStorage.get();
     return !!token;

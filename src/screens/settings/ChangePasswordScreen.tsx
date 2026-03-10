@@ -9,12 +9,16 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors, FontSize, FontWeight, Spacing, Shadows } from '../../constants/theme';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { useAuthStore } from '@/store/authStore';
 
 export const ChangePasswordScreen: React.FC = () => {
   const navigation = useNavigation();
   const [form, setForm] = useState({ current: '', newPass: '', confirm: '' });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const [loading, setLoading] = useState(false);
+
+    const { changePassword, isLoading, error, clearError } = useAuthStore();
+  
 
   const set = (key: keyof typeof form) => (val: string) =>
     setForm(prev => ({ ...prev, [key]: val }));
@@ -40,6 +44,18 @@ export const ChangePasswordScreen: React.FC = () => {
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);
   };
+
+    const handleSend = async () => {
+    if (!validate()) return;
+    try {
+      await changePassword(form.current, form.newPass, form.confirm);
+      Alert.alert('Password Changed!', 'Your password has been updated successfully.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch {
+      // error shown from store
+    }
+  }
 
   const requirements = [
     { label: 'At least 8 characters', met: form.newPass.length >= 8 },
@@ -118,7 +134,7 @@ export const ChangePasswordScreen: React.FC = () => {
             </View>
           )}
 
-          <Button label="Update Password" onPress={handleChange} loading={loading} />
+          <Button label="Update Password" onPress={handleSend} loading={loading} />
           <View style={{ height: Spacing.xl }} />
         </ScrollView>
       </KeyboardAvoidingView>

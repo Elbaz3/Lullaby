@@ -45,17 +45,18 @@ const calcAge = (dob: string): string => {
 
 // ── Baby Card ─────────────────────────────────
 const BabyCard: React.FC<{ baby: Baby; onPress: () => void }> = ({ baby, onPress }) => {
-  const age = calcAge(baby.dateOfBirth);
+  const age = calcAge(baby.dateBirth);
 
   return (
     <View style={[styles.card, Shadows.md]}>
       {/* Photo */}
       <View style={styles.cardPhotoWrap}>
-        {baby.photoUrl ? (
-          <Image source={{ uri: baby.photoUrl }} style={styles.cardPhoto} />
+        {baby.avatar ? (
+          <Image source={{ uri: baby.avatar }} style={styles.cardPhoto} />
         ) : (
-          <Image source={require('../../../assets/baby.jpg')} style={styles.cardPhoto} />
-          
+          <View style={[styles.cardPhotoPlaceholder, { backgroundColor: baby.gender === 'male' ? '#DBEAFE' : '#FCE7F3' }]}>
+            <Text style={styles.cardPhotoEmoji}>{baby.gender === 'male' ? '👦' : '👧'}</Text>
+          </View>
         )}
       </View>
 

@@ -1,123 +1,115 @@
 // ─────────────────────────────────────────────
-//  LULLABY — Baby Store (Zustand)
+//  LULLABY — Baby Store
 // ─────────────────────────────────────────────
 
 import { create } from 'zustand';
 import { babyService } from '../services/baby.service';
-import { sensorService } from '../services/sensor.service';
-import { cryService } from '../services/cry.service';
-import { Baby, AddBabyPayload, SensorReading, CryEvent } from '../types';
+import { Baby, AddBabyPayload } from '../types';
 
 interface BabyState {
-  babies: Baby[];
-  activeBabyId: string | null;
-  activeBaby: Baby | null;
-  isLoading: boolean;
-  error: string | null;
+  babies:        Baby[];
+  activeBabyId:  string | null;
+  activeBaby:    Baby | null;
+  isLoading:     boolean;
+  error:         string | null;
 
-  // Live data for active baby
-  latestReading: SensorReading | null;
-  latestCryEvent: CryEvent | null;
+  // Live sensor data (still mock for now)
+  latestReading:  any | null;
+  latestCryEvent: any | null;
   isFetchingLive: boolean;
 
-  // Actions
-  fetchBabies: () => Promise<void>;
-  setActiveBaby: (id: string) => void;
-  addBaby: (payload: AddBabyPayload) => Promise<Baby>;
-  updateBaby: (id: string, payload: Partial<AddBabyPayload>) => Promise<void>;
-  deleteBaby: (id: string) => Promise<void>;
-  fetchLiveData: (babyId: string) => Promise<void>;
-  clearError: () => void;
+  fetchBabies:    ()                                                    => Promise<void>;
+  setActiveBaby:  (id: string)                                          => void;
+  addBaby:        (payload: Omit<AddBabyPayload, 'avatar'>, avatarUri?: string | null) => Promise<Baby>;
+  updateBaby:     (id: string, payload: Partial<Omit<AddBabyPayload, 'avatar'>>, avatarUri?: string | null) => Promise<Baby>;
+  deleteBaby:     (id: string)                                          => Promise<void>;
+  fetchLiveData:  (babyId: string)                                      => Promise<void>;
+  clearError:     ()                                                    => void;
 }
 
 export const useBabyStore = create<BabyState>((set, get) => ({
-  babies: [],
-  activeBabyId: null,
-  activeBaby: null,
-  isLoading: false,
-  error: null,
-  latestReading: null,
+  babies:        [],
+  activeBabyId:  null,
+  activeBaby:    null,
+  isLoading:     false,
+  error:         null,
+  latestReading:  null,
   latestCryEvent: null,
   isFetchingLive: false,
 
+  // ── FETCH ALL ─────────────────────────────
   fetchBabies: async () => {
     set({ isLoading: true, error: null });
     try {
       const babies = await babyService.getBabies();
       const activeBabyId = babies.length > 0 ? babies[0].id : null;
-      const activeBaby = activeBabyId ? babies[0] : null;
+      const activeBaby   = babies.length > 0 ? babies[0] : null;
       set({ babies, activeBabyId, activeBaby, isLoading: false });
     } catch (err: any) {
-      set({ error: err.message ?? 'Failed to load babies', isLoading: false });
+      set({ error: err.message, isLoading: false });
     }
   },
 
+  // ── SET ACTIVE ────────────────────────────
   setActiveBaby: (id) => {
-    const baby = get().babies.find((b) => b.id === id) ?? null;
+    const baby = get().babies.find(b => b.id === id) ?? null;
     set({ activeBabyId: id, activeBaby: baby });
   },
 
-  addBaby: async (payload) => {
+  // ── ADD BABY ──────────────────────────────
+  addBaby: async (payload, avatarUri) => {
     set({ isLoading: true, error: null });
     try {
-      const newBaby = await babyService.addBaby(payload);
-      const babies = [...get().babies, newBaby];
-      set({
-        babies,
-        isLoading: false,
-        // Auto-select the new baby if it's the first one
-        activeBabyId: get().activeBabyId ?? newBaby.id,
-        activeBaby: get().activeBaby ?? newBaby,
-      });
-      return newBaby;
+      const baby = await babyService.addBaby(payload, avatarUri);
+      const babies = [...get().babies, baby];
+      set({ babies, activeBabyId: baby.id, activeBaby: baby, isLoading: false });
+      return baby;
     } catch (err: any) {
-      set({ error: err.message ?? 'Failed to add baby', isLoading: false });
+      set({ error: err.message, isLoading: false });
       throw err;
     }
   },
 
-  updateBaby: async (id, payload) => {
+  // ── UPDATE BABY ───────────────────────────
+  updateBaby: async (id, payload, avatarUri) => {
     set({ isLoading: true, error: null });
     try {
-      const updated = await babyService.updateBaby(id, payload);
-      const babies = get().babies.map((b) => (b.id === id ? updated : b));
+      const updated = await babyService.updateBaby(id, payload, avatarUri);
+      const babies  = get().babies.map(b => b.id === id ? updated : b);
       set({
         babies,
-        isLoading: false,
         activeBaby: get().activeBabyId === id ? updated : get().activeBaby,
+        isLoading: false,
       });
+      return updated;
     } catch (err: any) {
-      set({ error: err.message ?? 'Failed to update baby', isLoading: false });
+      set({ error: err.message, isLoading: false });
       throw err;
     }
   },
 
+  // ── DELETE BABY ───────────────────────────
   deleteBaby: async (id) => {
     set({ isLoading: true, error: null });
     try {
       await babyService.deleteBaby(id);
-      const babies = get().babies.filter((b) => b.id !== id);
+      const babies = get().babies.filter(b => b.id !== id);
       const newActive = babies.length > 0 ? babies[0] : null;
-      set({
-        babies,
-        isLoading: false,
-        activeBabyId: get().activeBabyId === id ? (newActive?.id ?? null) : get().activeBabyId,
-        activeBaby: get().activeBabyId === id ? newActive : get().activeBaby,
-      });
+      set({ babies, activeBabyId: newActive?.id ?? null, activeBaby: newActive, isLoading: false });
     } catch (err: any) {
-      set({ error: err.message ?? 'Failed to delete baby', isLoading: false });
+      set({ error: err.message, isLoading: false });
       throw err;
     }
   },
 
+  // ── LIVE DATA (still mock) ─────────────────
   fetchLiveData: async (babyId) => {
     set({ isFetchingLive: true });
     try {
-      const [reading, cryEvent] = await Promise.all([
-        sensorService.getLatestReading(babyId),
-        cryService.getLatestCryEvent(babyId),
-      ]);
-      set({ latestReading: reading, latestCryEvent: cryEvent, isFetchingLive: false });
+      // TODO: wire to real sensor endpoint when ready
+      await new Promise(r => setTimeout(r, 500));
+      const { MOCK_SENSOR_READING, MOCK_CRY_EVENTS } = await import('../constants/mockData');
+      set({ latestReading: MOCK_SENSOR_READING, latestCryEvent: MOCK_CRY_EVENTS[0], isFetchingLive: false });
     } catch {
       set({ isFetchingLive: false });
     }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Dimensions,Image
+  TouchableOpacity, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,7 +74,7 @@ export const BabyDetailScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Baby Profile</Text>
         <TouchableOpacity
           style={styles.editBtn}
-          onPress={() => navigation.navigate('AddBaby')}
+          onPress={() => navigation.navigate('AddBaby', { babyId: baby.id })}
         >
           <Ionicons name="pencil-outline" size={18} color={Colors.primary} />
         </TouchableOpacity>
@@ -84,15 +84,13 @@ export const BabyDetailScreen: React.FC = () => {
         {/* Hero Card */}
         <View style={[styles.heroCard, Shadows.lg]}>
           <View style={styles.heroTop}>
-            <View style={styles.cardPhotoWrap}>
-                      <Image source={require('../../../assets/baby.jpg')} style={styles.cardPhoto} />
-            </View>
+            <BabyAvatar baby={baby} size={80} />
             <View style={styles.heroInfo}>
               <Text style={styles.heroName}>{baby.name}</Text>
-              <Text style={styles.heroAge}>{getAge(baby.dateOfBirth)} old</Text>
+              <Text style={styles.heroAge}>{getAge(baby.dateBirth)} old</Text>
               <View style={styles.heroTags}>
                 <Badge
-                  label={baby.gender === 'boy' ? ' Boy' : ' Girl'}
+                  label={baby.gender === 'male' ? '👦 Boy' : '👧 Girl'}
                   variant="primary"
                 />
                 {baby.deviceId && <Badge label="📡 Connected" variant="success" />}
@@ -103,7 +101,7 @@ export const BabyDetailScreen: React.FC = () => {
           {/* Stats row */}
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{baby.weight ?? '—'}</Text>
+              <Text style={styles.heroStatValue}>{baby.weight ?? baby.wight ?? '—'}</Text>
               <Text style={styles.heroStatLabel}>kg</Text>
             </View>
             <View style={styles.heroStatDivider} />
@@ -222,18 +220,24 @@ export const BabyDetailScreen: React.FC = () => {
         <SectionHeader title="Details" />
         <Card>
           <InfoRow icon="calendar-outline" label="Date of Birth"
-            value={new Date(baby.dateOfBirth).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} />
+            value={baby.dateBirth ? new Date(baby.dateBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'} />
           <View style={styles.rowDivider} />
           <InfoRow icon="person-outline" label="Gender"
-            value={baby.gender === 'boy' ? 'Boy' : 'Girl'} />
+            value={baby.gender === 'male' ? 'Boy' : 'Girl'} />
           {baby.bloodType && <>
             <View style={styles.rowDivider} />
             <InfoRow icon="water-outline" label="Blood Type" value={baby.bloodType} />
           </>}
-          {baby.weight && <>
-            <View style={styles.rowDivider} />
-            <InfoRow icon="scale-outline" label="Weight" value={`${baby.weight} kg`} />
-          </>}
+          { (baby.weight ?? baby.wight) && (
+              <>
+                <View style={styles.rowDivider} />
+                <InfoRow 
+                  icon="scale-outline" 
+                  label="Weight" 
+                  value={`${baby.weight ?? baby.wight} kg`} 
+                />
+              </>
+          )}
           {baby.height && <>
             <View style={styles.rowDivider} />
             <InfoRow icon="resize-outline" label="Height" value={`${baby.height} cm`} />
@@ -270,11 +274,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderRadius: Radius.xxl,
     padding: Spacing.xl, gap: Spacing.lg,
   },
-    cardPhotoWrap: {
-    width: 72, height: 72, borderRadius: 36, overflow: 'hidden',
-    borderWidth: 2, borderColor: Colors.primarySoft,
-  },
-  cardPhoto:    { width: '100%', height: '100%' },
   heroTop: { flexDirection: 'row', gap: Spacing.lg, alignItems: 'center' },
   heroInfo: { flex: 1, gap: Spacing.sm },
   heroName: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark },

@@ -16,13 +16,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
+import { useBabyStore } from '../../store/babyStore';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
 const { width } = Dimensions.get('window');
 type Nav = NativeStackNavigationProp<any>;
 
-type Gender    = 'boy' | 'girl';
+type Gender    = 'male' | 'female';
 type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 
 const BLOOD_TYPES: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -52,6 +53,7 @@ const calcAge = (dob: string): string => {
 export const OnboardingAddBabyScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
 
+  const { addBaby } = useBabyStore();
   const [photo,     setPhoto]     = useState<string | null>(null);
   const [name,      setName]      = useState('');
   const [gender,    setGender]    = useState<Gender | null>(null);
@@ -119,18 +121,30 @@ export const OnboardingAddBabyScreen: React.FC = () => {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
+    try {
+      const dateBirth = parseDate(dob)!.split('T')[0]; // YYYY-MM-DD
 
-    // TODO: call baby API when backend is ready
-    // const isoDate = parseDate(dob)!;
-    // await babyService.addBaby({ name, gender, dateOfBirth: isoDate, ... });
+      await addBaby(
+        {
+          name:      name.trim(),
+          gender,                       // 'male' | 'female'
+          dateBirth,                    // YYYY-MM-DD
+          height:    height ? Number(height) : undefined,
+          weight:     weight ? Number(weight) : undefined, // backend typo
+          bloodType: bloodType ?? undefined,
+        },
+        photo,                          // avatar image URI or null
+      );
 
-    await new Promise(r => setTimeout(r, 600)); // mock save
-    setSaving(false);
-
-    navigation.navigate('OnboardingConnectDevice', {
-      babyName: name.trim(),
-      babyPhoto: photo,
-    });
+      navigation.navigate('OnboardingConnectDevice', {
+        babyName:  name.trim(),
+        babyPhoto: photo,
+      });
+    } catch (err: any) {
+      setErrors({ name: err.message ?? 'Failed to save. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const agePreview = dob.length === 10 ? calcAge(parseDate(dob) ?? '') : null;
@@ -185,13 +199,13 @@ export const OnboardingAddBabyScreen: React.FC = () => {
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Gender</Text>
             <View style={styles.genderRow}>
-              {(['boy', 'girl'] as Gender[]).map(g => (
+              {(['male', 'female'] as Gender[]).map(g => (
                 <TouchableOpacity
                   key={g}
                   style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
                   onPress={() => { setGender(g); setErrors(p => ({ ...p, gender: '' })); }}
                 >
-                  <Text style={styles.genderEmoji}>{g === 'boy' ? '👦' : '👧'}</Text>
+                  <Text style={styles.genderEmoji}>{g === 'male' ? '👦' : '👧'}</Text>
                   <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
                     {g.charAt(0).toUpperCase() + g.slice(1)}
                   </Text>

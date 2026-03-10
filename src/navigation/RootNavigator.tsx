@@ -2,11 +2,15 @@
 //  ROOT NAVIGATOR
 //
 //  Decision tree:
-//  isInitializing        → spinner
-//  !isAuthenticated      → Auth stack (login/register)
+//  isInitializing        → spinner (checking token + fetching baby)
+//  !isAuthenticated      → Auth stack
 //  isAuthenticated
-//    + !hasOnboarding    → Onboarding stack
-//    + hasOnboarding     → App (home)
+//    + !hasBaby          → Onboarding stack (protected — must add baby to exit)
+//    + hasBaby           → App (home tabs)
+//
+//  hasBaby is derived from the backend — not SecureStore.
+//  If /api/children returns {} or [] → onboarding.
+//  If /api/children returns a baby   → skip onboarding.
 // ─────────────────────────────────────────────
 
 import React, { useEffect } from 'react';
@@ -14,18 +18,18 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
-import { AuthNavigator }        from './AuthNavigator';
-import { AppNavigator }         from './AppNavigator';
-import { OnboardingWelcomeScreen }       from '../screens/onboarding/OnboardingWelcomeScreen';
-import { OnboardingAddBabyScreen }       from '../screens/onboarding/OnboardingAddBabyScreen';
-import { OnboardingConnectDeviceScreen } from '../screens/onboarding/OnboardingConnectDeviceScreen';
-import { useAuthStore }         from '../store/authStore';
-import { Colors }               from '../constants/theme';
+import { AuthNavigator }                    from './AuthNavigator';
+import { AppNavigator }                     from './AppNavigator';
+import { OnboardingWelcomeScreen }          from '../screens/onboarding/OnboardingWelcomeScreen';
+import { OnboardingAddBabyScreen }          from '../screens/onboarding/OnboardingAddBabyScreen';
+import { OnboardingConnectDeviceScreen }    from '../screens/onboarding/OnboardingConnectDeviceScreen';
+import { useAuthStore }                     from '../store/authStore';
+import { Colors }                           from '../constants/theme';
 
 const Root = createNativeStackNavigator();
 
 export const RootNavigator: React.FC = () => {
-  const { isAuthenticated, hasCompletedOnboarding, isInitializing, initialize } = useAuthStore();
+  const { isAuthenticated, hasBaby, isInitializing, initialize } = useAuthStore();
 
   useEffect(() => { initialize(); }, []);
 
@@ -42,17 +46,23 @@ export const RootNavigator: React.FC = () => {
       <Root.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
 
         {!isAuthenticated ? (
-          // Not logged in → Auth screens
+          // ── Not logged in ──────────────────
           <Root.Screen name="Auth" component={AuthNavigator} />
-        ) : !hasCompletedOnboarding ? (
-          // Logged in but never added a baby → Onboarding
+
+        ) : !hasBaby ? (
+          // ── Logged in but no baby yet ──────
+          // Protected: user cannot navigate away from
+          // these screens until a baby is added.
+          // completeOnboarding() sets hasBaby=true after
+          // babyService.addBaby() succeeds.
           <>
             <Root.Screen name="OnboardingWelcome"       component={OnboardingWelcomeScreen} />
             <Root.Screen name="OnboardingAddBaby"       component={OnboardingAddBabyScreen} />
             <Root.Screen name="OnboardingConnectDevice" component={OnboardingConnectDeviceScreen} />
           </>
+
         ) : (
-          // Fully onboarded → App
+          // ── Has baby → go to app ───────────
           <Root.Screen name="App" component={AppNavigator} />
         )}
 
@@ -62,5 +72,10 @@ export const RootNavigator: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: Colors.bgMain, alignItems: 'center', justifyContent: 'center' },
+  loading: {
+    flex: 1,
+    backgroundColor: Colors.bgMain,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

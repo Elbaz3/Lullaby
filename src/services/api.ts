@@ -16,10 +16,13 @@ export const ENDPOINTS = {
   AUTH_VERIFY_OTP:  '/auth/verify-otp',
   AUTH_REQUEST_OTP: '/auth/request-otp',
   AUTH_ME:          '/auth/me',
+  FORGOT_PASSWORD: '/auth/forgot-password',
+  VERIFY_FORGOT_PASSWORD: '/auth/verify-forgot-password',
+  CHANGE_PASSWORD: '/auth/change-password',
 
   // Babies
-  BABIES:           '/babies',
-  BABY_BY_ID:       (id: string) => `/babies/${id}`,
+  BABIES:           '/children',   // backend uses /children not /babies
+  BABY_BY_ID:       (id: string) => `/children/${id}`,
   BABY_SENSORS:     (id: string) => `/babies/${id}/sensors`,
 
   // Cry
@@ -118,11 +121,7 @@ export async function apiRequest<T>(
     });
   } catch (networkError) {
     // No internet or server unreachable
-    // throw new ApiError('No internet connection. Please check your network.', 0);
-      throw new ApiError(
-    `Fetch failed: ${networkError?.message ?? networkError}`,
-    0
-  );
+    throw new ApiError('No internet connection. Please check your network.', 0);
   }
 
   // Parse body — NestJS always returns JSON
