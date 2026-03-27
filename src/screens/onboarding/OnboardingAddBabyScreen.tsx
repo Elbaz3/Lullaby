@@ -17,6 +17,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { useBabyStore } from '../../store/babyStore';
+import { useAuthStore } from '../../store/authStore';
+import { DatePickerInput }           from '../../components/ui/DatePickerInput';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
@@ -53,11 +55,12 @@ const calcAge = (dob: string): string => {
 export const OnboardingAddBabyScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
 
-  const { addBaby } = useBabyStore();
+  const { addBaby }           = useBabyStore();
+  const { completeOnboarding } = useAuthStore();
   const [photo,     setPhoto]     = useState<string | null>(null);
   const [name,      setName]      = useState('');
   const [gender,    setGender]    = useState<Gender | null>(null);
-  const [dob,       setDob]       = useState(''); // DD/MM/YYYY
+  const [dobISO,    setDobISO]    = useState<string | null>(null);
   const [weight,    setWeight]    = useState('');
   const [height,    setHeight]    = useState('');
   const [bloodType, setBloodType] = useState<BloodType | null>(null);
@@ -87,30 +90,14 @@ export const OnboardingAddBabyScreen: React.FC = () => {
     }
   };
 
-  // ── DOB formatting DD/MM/YYYY ─────────────
-  const handleDobChange = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 8);
-    let formatted = digits;
-    if (digits.length > 4) formatted = `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`;
-    else if (digits.length > 2) formatted = `${digits.slice(0,2)}/${digits.slice(2)}`;
-    setDob(formatted);
-    setErrors(p => ({ ...p, dob: '' }));
-  };
 
-  // Parse DD/MM/YYYY → ISO
-  const parseDate = (val: string): string | null => {
-    const parts = val.split('/');
-    if (parts.length !== 3 || parts[2].length !== 4) return null;
-    const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-    return isNaN(d.getTime()) ? null : d.toISOString();
-  };
 
   // ── Validation ────────────────────────────
   const validate = (): boolean => {
     const e: Record<string, string> = {};
     if (!name.trim() || name.trim().length < 2) e.name = 'Name must be at least 2 characters';
     if (!gender) e.gender = 'Please select gender';
-    if (!dob || !parseDate(dob)) e.dob = 'Enter a valid date (DD/MM/YYYY)';
+    if (!dobISO) e.dob = 'Please select a date of birth';
     if (weight && isNaN(Number(weight))) e.weight = 'Enter a valid weight';
     if (height && isNaN(Number(height))) e.height = 'Enter a valid height';
     setErrors(e);
@@ -122,7 +109,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
     if (!validate()) return;
     setSaving(true);
     try {
-      const dateBirth = parseDate(dob)!.split('T')[0]; // YYYY-MM-DD
+      const dateBirth = dobISO!.split('T')[0]; // YYYY-MM-DD
 
       await addBaby(
         {
@@ -130,11 +117,15 @@ export const OnboardingAddBabyScreen: React.FC = () => {
           gender,                       // 'male' | 'female'
           dateBirth,                    // YYYY-MM-DD
           height:    height ? Number(height) : undefined,
-          weight:     weight ? Number(weight) : undefined, // backend typo
+          wight:     weight ? Number(weight) : undefined, // backend typo
           bloodType: bloodType ?? undefined,
         },
         photo,                          // avatar image URI or null
       );
+
+      // Baby saved successfully → mark onboarding done
+      // RootNavigator will switch to App after ConnectDevice
+      completeOnboarding();
 
       navigation.navigate('OnboardingConnectDevice', {
         babyName:  name.trim(),
@@ -147,7 +138,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
     }
   };
 
-  const agePreview = dob.length === 10 ? calcAge(parseDate(dob) ?? '') : null;
+  const agePreview = dobISO ? calcAge(dobISO) : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -217,15 +208,14 @@ export const OnboardingAddBabyScreen: React.FC = () => {
 
           {/* DOB */}
           <View style={styles.fieldGroup}>
-            <Input
+            <DatePickerInput
               label="Date of Birth"
-              placeholder="DD/MM/YYYY"
-              value={dob}
-              onChangeText={handleDobChange}
-              keyboardType="number-pad"
-              leftIcon="calendar-outline"
+              value={dobISO}
+              onChange={setDobISO}
+              maxDate={new Date()}
+              minDate={new Date(2000, 0, 1)}
+              placeholder="Select baby's date of birth"
               error={errors.dob}
-              maxLength={10}
             />
             {agePreview && !errors.dob && (
               <View style={styles.agePreview}>

@@ -6,12 +6,15 @@
 // ── User ──────────────────────────────────────
 // Matches what your backend returns inside data.user
 export interface User {
-  id:      string;
-  name:    string;        // backend uses "name" not "fullName"
-  email:   string;
-  phone:   string;
-  avatar:  string | null;
-  country: string | null;
+  id:           string;
+  name:         string;
+  email:        string;
+  phone:        string;
+  avatar:       string | null;
+  country:      string | null;
+  dateOfBirth?: string | null;   // ISO date string
+  fullName?:    string;          // alias — some places use this
+  createdAt?:   string;
 }
 
 // ── Auth ──────────────────────────────────────
@@ -73,7 +76,7 @@ export interface Baby {
   weight?:     number;       // GET returns 'weight' (fixed in backend)
   wight?:      number;       // POST/PATCH sends 'wight' (backend typo — keep for writes)
   bloodType?:  BloodType;
-  avatar?:     string;       // full URL e.g. "http://63.179.148.169/uploads/..."
+  avatar?:     string | null; // full URL e.g. "http://63.179.148.169/uploads/..."
   deviceId?:   string;
   predictions?: any[];
   createdAt?:  string;
@@ -98,6 +101,8 @@ export interface AirQuality {
   humidity:    number;
   temperature: number;
   co2:         number;
+  pm25?:       number;
+  status?:     string;
 }
 
 export interface SensorReading {
@@ -132,6 +137,15 @@ export interface CryEvent {
   audioUrl?:  string;
 }
 
+export interface CryReasonMeta {
+  reason:      string;
+  label:       string;
+  emoji:       string;
+  color:       string;
+  description: string;
+  suggestion:  string;
+}
+
 // ── Device ────────────────────────────────────
 export interface DeviceSensor {
   type:      string;
@@ -156,12 +170,12 @@ export interface DailyReport {
   totalCryEvents: number;
   avgTemperature: number;
   avgHeartRate:   number;
-  avgBreathing:   number;
-  avgOxygen:      number;
-  totalSleepHours: number;
+  avgBreathingRate: number;
+  avgOxygenLevel: number;
+  sleepDuration:  number; // minutes
   airQualityAvg:  number;
   overallScore:   number;
-  hourlyData:     { hour: number; cryCount: number; avgTemp: number }[];
+  hourlyData:     { hour: number; cryCount: number; heartRate: number; temperature: number }[];
 }
 
 // ── API Helpers ───────────────────────────────
@@ -178,6 +192,32 @@ export interface PaginatedResponse<T> {
   page:     number;
   pageSize: number;
   hasMore:  boolean;
+}
+
+
+// ── Vaccination (real backend shape) ─────────
+export interface VaccineInfo {
+  _id:         string;
+  id:          string;
+  name:        string;
+  ageRequired: number;   // months
+  dose:        number;
+  vaccineType: string;   // 'live' | 'inactivated' | etc.
+  description: string;
+  isBooster:   boolean;
+  repeat:      boolean;
+}
+
+export interface VaccinationRecord {
+  _id:           string;
+  id:            string;
+  isTaken:       boolean;
+  scheduledDate: string;   // ISO
+  vaccine:       VaccineInfo;
+  createdAt:     string;
+  updatedAt:     string;
+  // derived on client — not from backend
+  status?: 'upcoming' | 'done' | 'overdue';   // matches backend filter strings exactly
 }
 
 // ── Navigation Param Lists ────────────────────

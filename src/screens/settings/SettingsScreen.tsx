@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -88,7 +89,11 @@ export const SettingsScreen: React.FC = () => {
         {/* Profile Card */}
         <View style={[styles.profileCard, Shadows.md]}>
           <View style={styles.avatarWrap}>
-            <Text style={styles.avatarEmoji}>👤</Text>
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatarImg} />
+            ) : (
+              <Ionicons name="person" size={28} color={Colors.primary} />
+            )}
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{user?.name ?? 'User'}</Text>
@@ -247,6 +252,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarEmoji: { fontSize: 28 },
+  avatarImg: { width: 56, height: 56, borderRadius: 28 },
   profileInfo: { flex: 1 },
   profileName: {
     fontSize: FontSize.lg,

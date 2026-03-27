@@ -1,257 +1,524 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, Modal,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { vaccinationService } from '../../services/vaccination.service';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
-import { Card, SectionHeader, Badge } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { VaccinationRecord } from '../../constants/mockData';
+// ─────────────────────────────────────────────
+//  VACCINATION SCREEN
+//
+//  Strategy:
+//   - Mount: fetch ?type=all once → stats card
+//   - Tab change: fetch ?type=<tab> → list
+//   - Status derived client-side from isTaken + scheduledDate
+// ─────────────────────────────────────────────
 
-type RouteParams = { Vaccination: { babyId: string } };
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, FlatList, ScrollView,
+  TouchableOpacity, Modal, ActivityIndicator,
+  RefreshControl, Switch, Alert,
+} from 'react-native';
+import { SafeAreaView }              from 'react-native-safe-area-context';
+import { Ionicons }                  from '@expo/vector-icons';
+import { useNavigation }             from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { vaccinationService, VaccineFilterType } from '../../services/vaccination.service';
+import { VaccinationRecord }         from '../../types';
+import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
+
 type Nav = NativeStackNavigationProp<any>;
 
-const STATUS_CONFIG = {
-  completed: { color: Colors.success, bg: Colors.successSoft, icon: 'checkmark-circle', label: 'Completed' },
-  upcoming:  { color: Colors.warning, bg: Colors.warningSoft, icon: 'time-outline',     label: 'Upcoming' },
-  overdue:   { color: Colors.danger,  bg: Colors.dangerSoft,  icon: 'alert-circle',     label: 'Overdue' },
-  skipped:   { color: Colors.textMuted, bg: Colors.bgInput,   icon: 'close-circle',     label: 'Skipped' },
+// ── Status display config ─────────────────────
+const STATUS_CFG = {
+  done:      { color: Colors.success, bg: Colors.successSoft, icon: 'checkmark-circle' as const, label: 'Done'      },
+  upcoming:  { color: Colors.warning, bg: Colors.warningSoft, icon: 'time-outline'     as const, label: 'Upcoming'  },
+  overdue:   { color: Colors.danger,  bg: Colors.dangerSoft,  icon: 'alert-circle'     as const, label: 'Overdue'   },
 };
 
-type FilterType = 'all' | 'upcoming' | 'completed' | 'overdue';
+const VACCINE_TYPE_COLOR: Record<string, string> = {
+  live:        '#8B5CF6',
+  inactivated: '#0EA5E9',
+  subunit:     '#F59E0B',
+  toxoid:      '#10B981',
+  mrna:        '#EC4899',
+};
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+const daysRelative = (iso: string): string => {
+  const diff = Math.round(
+    (new Date(iso).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000
+  );
+  if (diff === 0)  return 'Today';
+  if (diff === 1)  return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff > 0)    return `In ${diff} day${diff !== 1 ? 's' : ''}`;
+  return `${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''} ago`;
+};
+
+// ── Tab definitions ───────────────────────────
+type TabDef = { key: VaccineFilterType; label: string; statusKey?: 'done' | 'upcoming' | 'overdue' };
+const TABS: TabDef[] = [
+  { key: 'all',      label: 'All'      },
+  { key: 'upcoming', label: 'Upcoming', statusKey: 'upcoming'  },
+  { key: 'overdue',  label: 'Overdue',  statusKey: 'overdue'   },
+  { key: 'done',     label: 'Done',     statusKey: 'done'      },
+];
 
 export const VaccinationScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<RouteProp<RouteParams, 'Vaccination'>>();
-  const { babyId } = route.params;
 
-  const [records, setRecords] = useState<VaccinationRecord[]>([]);
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<VaccinationRecord | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  // Full list (type=all) — used for stats only
+  const [allRecords,  setAllRecords]  = useState<VaccinationRecord[]>([]);
+  // Current tab list
+  const [tabRecords,  setTabRecords]  = useState<VaccinationRecord[]>([]);
+  const [activeTab,   setActiveTab]   = useState<VaccineFilterType>('all');
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [listLoading,  setListLoading]  = useState(true);
+  const [listError,    setListError]    = useState<string | null>(null);
+  const [refreshing,   setRefreshing]   = useState(false);
+  const [selected,     setSelected]     = useState<VaccinationRecord | null>(null);
+  const [toggling,     setToggling]     = useState<Set<string>>(new Set());
 
+  // Stats derived from allRecords
+  const stats = vaccinationService.getStats(allRecords);
+
+  // ── Fetch stats (type=all, once) ───────────
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await vaccinationService.getByType('all');
+      setAllRecords(data);
+    } catch { /* stats silently fail */ }
+    finally { setStatsLoading(false); }
+  }, []);
+
+  // ── Fetch list for active tab ──────────────
+  const fetchList = useCallback(async (type: VaccineFilterType, silent = false) => {
+    if (!silent) setListLoading(true);
+    setListError(null);
+    try {
+      const data = await vaccinationService.getByType(type);
+      // Sort: overdue first → upcoming by date → completed last
+      data.sort((a, b) => {
+        const order = { overdue: 0, upcoming: 1, done: 2 } as Record<string, number>;
+        const diff  = (order[a.status!] ?? 1) - (order[b.status!] ?? 1);
+        return diff !== 0 ? diff
+          : new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime();
+      });
+      setTabRecords(data);
+    } catch (err: any) {
+      setListError(err.message ?? 'Failed to load vaccinations.');
+    } finally {
+      setListLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Mount: fetch both
   useEffect(() => {
-    vaccinationService.getRecords(babyId).then(r => {
-      setRecords(r);
-      setLoading(false);
-    });
-  }, [babyId]);
+    fetchStats();
+    fetchList('all');
+  }, []);
 
-  const stats = vaccinationService.getStats(records);
-
-  const filtered = filter === 'all'
-    ? records
-    : records.filter(r => r.status === filter);
-
-  const handleMarkDone = (record: VaccinationRecord) => {
-    setSelected(record);
-    setModalVisible(true);
+  // Tab change: new backend request
+  const handleTabChange = (tab: VaccineFilterType) => {
+    setActiveTab(tab);
+    fetchList(tab);
   };
 
-  const confirmMarkDone = async () => {
-    if (!selected) return;
-    await vaccinationService.markCompleted(selected.id, {
-      administeredDate: new Date().toISOString().split('T')[0],
-      location: 'Clinic',
-    });
-    setRecords(prev => prev.map(r =>
-      r.id === selected.id
-        ? { ...r, status: 'completed', administeredDate: new Date().toISOString().split('T')[0] }
-        : r
-    ));
-    setModalVisible(false);
-    setSelected(null);
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchStats();
+    fetchList(activeTab, true);
+  };
+
+  // ── Toggle isTaken ────────────────────────
+  const handleToggle = async (item: VaccinationRecord) => {
+    const newValue = item.status !== 'done';   // flip current state
+    setToggling(prev => new Set(prev).add(item.id));
+    try {
+      await vaccinationService.markTaken(item.id, newValue);
+      // Optimistically update both lists without full refetch
+      const patch = (r: VaccinationRecord) =>
+        r.id === item.id
+          ? { ...r, isTaken: newValue, status: newValue ? 'done' : (
+              new Date(r.scheduledDate) < new Date() ? 'overdue' : 'upcoming'
+            ) as VaccinationRecord['status'] }
+          : r;
+      setTabRecords(prev => prev.map(patch));
+      setAllRecords(prev => prev.map(patch));
+      // Close modal if open on this item
+      if (selected?.id === item.id) setSelected(prev => prev ? patch(prev) : null);
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Failed to update vaccination.');
+    } finally {
+      setToggling(prev => { const s = new Set(prev); s.delete(item.id); return s; });
+    }
+  };
+
+  // ── Render card ────────────────────────────
+  const renderCard = ({ item }: { item: VaccinationRecord }) => {
+    const cfg     = STATUS_CFG[item.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.upcoming;
+    const typeClr = VACCINE_TYPE_COLOR[item.vaccine?.vaccineType] ?? Colors.textMuted;
+
+    return (
+      <TouchableOpacity
+        style={[styles.card, Shadows.sm]}
+        onPress={() => setSelected(item)}
+        activeOpacity={0.85}
+      >
+        <View style={[styles.cardAccent, { backgroundColor: cfg.color }]} />
+
+        <View style={styles.cardBody}>
+          <View style={styles.cardTop}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.vaccineName}>{item.vaccine?.name ?? '—'}</Text>
+              {item.vaccine?.isBooster && (
+                <View style={styles.boosterBadge}>
+                  <Text style={styles.boosterText}>Booster</Text>
+                </View>
+              )}
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+              <Ionicons name={cfg.icon} size={12} color={cfg.color} />
+              <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+            </View>
+          </View>
+
+          {item.vaccine?.description && (
+            <Text style={styles.vaccineDesc} numberOfLines={1}>{item.vaccine.description}</Text>
+          )}
+
+          <View style={styles.cardBottom}>
+            <View style={styles.metaItem}>
+              <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
+              <Text style={styles.metaText}>{formatDate(item.scheduledDate)}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
+              <Text style={[styles.metaText, item.status === 'overdue' && { color: Colors.danger }]}>
+                {daysRelative(item.scheduledDate)}
+              </Text>
+            </View>
+            <View style={[styles.typeBadge, { borderColor: typeClr }]}>
+              <Text style={[styles.typeText, { color: typeClr }]}>{item.vaccine?.vaccineType ?? '—'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Toggle */}
+        <Switch
+          value={item.status === 'done'}
+          onValueChange={() => handleToggle(item)}
+          disabled={toggling.has(item.id)}
+          trackColor={{ false: Colors.border, true: Colors.successSoft }}
+          thumbColor={item.status === 'done' ? Colors.success : Colors.textMuted}
+          style={styles.cardSwitch}
+        />
+      </TouchableOpacity>
+    );
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vaccination Schedule</Text>
+        <Text style={styles.headerTitle}>Vaccinations</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Stats */}
-        <View style={[styles.statsRow, Shadows.sm]}>
-          {[
-            { label: 'Total', value: stats.total, color: Colors.primary },
-            { label: 'Done', value: stats.completed, color: Colors.success },
-            { label: 'Upcoming', value: stats.upcoming, color: Colors.warning },
-            { label: 'Overdue', value: stats.overdue, color: Colors.danger },
-          ].map(s => (
-            <View key={s.label} style={styles.statItem}>
-              <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
+      <FlatList
+        data={listLoading ? [] : tabRecords}
+        keyExtractor={item => item.id}
+        renderItem={renderCard}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} tintColor={Colors.primary} />
+        }
 
-        {/* Progress */}
-        <Card>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>Vaccination Progress</Text>
-            <Text style={styles.progressPct}>{stats.percentage}%</Text>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${stats.percentage}%` as any }]} />
-          </View>
-          <Text style={styles.progressSub}>
-            {stats.completed} of {stats.total} vaccines completed
-          </Text>
-        </Card>
-
-        {/* Filter Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {(['all', 'upcoming', 'overdue', 'completed'] as FilterType[]).map(f => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterPill, filter === f && styles.filterPillActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text style={[styles.filterPillText, filter === f && styles.filterPillTextActive]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-                {f !== 'all' && ` (${records.filter(r => r.status === f).length})`}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Records */}
-        <SectionHeader title={`${filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)} Vaccines`} />
-        <View style={styles.list}>
-          {filtered.map(record => {
-            const cfg = STATUS_CONFIG[record.status];
-            return (
-              <View key={record.id} style={[styles.recordCard, Shadows.sm]}>
-                <View style={[styles.recordIconWrap, { backgroundColor: cfg.bg }]}>
-                  <Ionicons name={cfg.icon as any} size={22} color={cfg.color} />
-                </View>
-                <View style={styles.recordInfo}>
-                  <View style={styles.recordTop}>
-                    <Text style={styles.recordName}>{record.vaccineName}</Text>
-                    <Badge label={`Dose ${record.doseNumber}`} variant="neutral" />
-                  </View>
-                  <View style={styles.recordMeta}>
-                    <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
-                    <Text style={styles.recordDate}>
-                      {record.status === 'completed' && record.administeredDate
-                        ? `Given: ${new Date(record.administeredDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                        : `Due: ${new Date(record.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                      }
-                    </Text>
-                  </View>
-                  {record.location && (
-                    <View style={styles.recordMeta}>
-                      <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
-                      <Text style={styles.recordDate}>{record.location}</Text>
+        ListHeaderComponent={() => (
+          <>
+            {/* ── Progress card ── */}
+            <View style={[styles.progressCard, Shadows.md]}>
+              {statsLoading ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <>
+                  <View style={styles.progressTop}>
+                    <View>
+                      <Text style={styles.progressTitle}>Vaccination Progress</Text>
+                      <Text style={styles.progressSub}>{stats.done} of {stats.total} completed</Text>
                     </View>
-                  )}
-                  {(record.status === 'upcoming' || record.status === 'overdue') && (
-                    <TouchableOpacity
-                      style={[styles.markDoneBtn, { backgroundColor: cfg.color + '15' }]}
-                      onPress={() => handleMarkDone(record)}
-                    >
-                      <Text style={[styles.markDoneText, { color: cfg.color }]}>Mark as Done</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
-                  <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={{ height: Spacing.xl }} />
-      </ScrollView>
-
-      {/* Confirm Modal */}
-      <Modal visible={modalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalEmoji}>💉</Text>
-            <Text style={styles.modalTitle}>Mark as Completed?</Text>
-            <Text style={styles.modalSubtitle}>
-              Confirm that {selected?.vaccineName} (Dose {selected?.doseNumber}) was administered today.
-            </Text>
-            <View style={styles.modalActions}>
-              <Button label="Cancel" variant="outline" onPress={() => setModalVisible(false)} style={{ flex: 1 }} />
-              <Button label="Confirm" onPress={confirmMarkDone} style={{ flex: 1 }} />
+                    <View style={styles.progressCircle}>
+                      <Text style={styles.progressPct}>{stats.percentage}%</Text>
+                    </View>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${stats.percentage}%` as any }]} />
+                  </View>
+                  <View style={styles.statsRow}>
+                    <StatChip icon="checkmark-circle" color="#86EFAC" label="Done"    value={stats.done} />
+                    <StatChip icon="time-outline"     color="#FDE68A" label="Soon"    value={stats.upcoming}  />
+                    <StatChip icon="alert-circle"     color="#FCA5A5" label="Overdue" value={stats.overdue}   />
+                  </View>
+                </>
+              )}
             </View>
-          </View>
-        </View>
+
+            {/* ── Filter tabs ── */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabsRow}
+            >
+              {TABS.map(tab => {
+                const count = tab.statusKey ? stats[tab.statusKey] : stats.total;
+                const isActive = activeTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.tab, isActive && styles.tabActive]}
+                    onPress={() => handleTabChange(tab.key)}
+                  >
+                    <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+                    {count > 0 && (
+                      <View style={[styles.tabCount, isActive && styles.tabCountActive]}>
+                        <Text style={[styles.tabCountText, isActive && styles.tabCountTextActive]}>
+                          {count}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+
+        ListEmptyComponent={() => (
+          listLoading ? (
+            <View style={styles.centerWrap}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={styles.loadingText}>Loading vaccinations...</Text>
+            </View>
+          ) : listError ? (
+            <View style={styles.centerWrap}>
+              <Ionicons name="cloud-offline-outline" size={48} color={Colors.textMuted} />
+              <Text style={styles.errorTitle}>Couldn't load data</Text>
+              <Text style={styles.errorSub}>{listError}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={() => fetchList(activeTab)}>
+                <Text style={styles.retryText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyEmoji}>💉</Text>
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'all' ? 'No vaccinations' : `No ${activeTab} vaccinations`}
+              </Text>
+              <Text style={styles.emptySub}>
+                {activeTab === 'done'     ? 'No vaccinations have been completed yet.' :
+                 activeTab === 'overdue'  ? 'Great — no overdue vaccinations!' :
+                 activeTab === 'upcoming' ? 'No upcoming vaccinations scheduled.' :
+                 'No vaccination records found.'}
+              </Text>
+            </View>
+          )
+        )}
+      />
+
+      {/* ── Detail Modal ── */}
+      <Modal
+        visible={!!selected}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelected(null)}
+      >
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setSelected(null)} />
+        {selected && (() => {
+          const cfg     = STATUS_CFG[selected.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.upcoming;
+          const typeClr = VACCINE_TYPE_COLOR[selected.vaccine?.vaccineType] ?? Colors.textMuted;
+          return (
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+
+              <View style={[styles.modalIconCircle, { backgroundColor: cfg.bg }]}>
+                <Ionicons name={cfg.icon} size={32} color={cfg.color} />
+              </View>
+
+              <Text style={styles.modalName}>{selected.vaccine?.name}</Text>
+
+              <View style={[styles.statusBadge, { backgroundColor: cfg.bg, alignSelf: 'center', marginBottom: Spacing.md }]}>
+                <Ionicons name={cfg.icon} size={13} color={cfg.color} />
+                <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+              </View>
+
+              <View style={styles.modalDetails}>
+                <DetailRow icon="document-text-outline"    label="Description"   value={selected.vaccine?.description ?? '—'} />
+                <DetailRow icon="calendar-outline"          label="Scheduled"     value={formatDate(selected.scheduledDate)} />
+                <DetailRow icon="time-outline"              label="When"          value={daysRelative(selected.scheduledDate)} highlight={selected.status === 'overdue'} />
+                <DetailRow icon="medical-outline"           label="Dose"          value={`Dose ${selected.vaccine?.dose}`} />
+                <DetailRow icon="flask-outline"             label="Vaccine Type"  value={selected.vaccine?.vaccineType ?? '—'} valueColor={typeClr} />
+                <DetailRow icon="calendar-number-outline"   label="Age Required"  value={
+                  selected.vaccine?.ageRequired === 0
+                    ? 'At birth'
+                    : `${selected.vaccine?.ageRequired} month${selected.vaccine?.ageRequired !== 1 ? 's' : ''}`
+                } />
+                {selected.vaccine?.isBooster && (
+                  <DetailRow icon="refresh-outline" label="Type"     value="Booster dose" />
+                )}
+                {selected.vaccine?.repeat && (
+                  <DetailRow icon="repeat-outline"  label="Schedule" value="Recurring"    />
+                )}
+              </View>
+
+              {/* Toggle button in modal */}
+              <TouchableOpacity
+                style={[
+                  styles.modalToggleBtn,
+                  selected.status === 'done'
+                    ? styles.modalToggleBtnUndo
+                    : styles.modalToggleBtnDone,
+                ]}
+                onPress={() => handleToggle(selected)}
+                disabled={toggling.has(selected.id)}
+              >
+                {toggling.has(selected.id) ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={selected.status === 'done' ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                      size={18}
+                      color={Colors.white}
+                    />
+                    <Text style={styles.modalToggleTxt}>
+                      {selected.status === 'done' ? 'Mark as Not Taken' : 'Mark as Done'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelected(null)}>
+                <Text style={styles.modalCloseTxt}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
       </Modal>
     </SafeAreaView>
   );
 };
 
+// ── Helper components ─────────────────────────
+const StatChip: React.FC<{ icon: any; color: string; label: string; value: number }> = ({ icon, color, label, value }) => (
+  <View style={chipSt.wrap}>
+    <Ionicons name={icon} size={16} color={color} />
+    <Text style={chipSt.val}>{value}</Text>
+    <Text style={chipSt.lbl}>{label}</Text>
+  </View>
+);
+
+const DetailRow: React.FC<{ icon: any; label: string; value: string; highlight?: boolean; valueColor?: string }> = ({
+  icon, label, value, highlight, valueColor,
+}) => (
+  <View style={detailSt.row}>
+    <View style={detailSt.iconWrap}>
+      <Ionicons name={icon} size={16} color={Colors.primary} />
+    </View>
+    <Text style={detailSt.label}>{label}</Text>
+    <Text style={[detailSt.value, highlight && { color: Colors.danger }, valueColor ? { color: valueColor } : {}]}>
+      {value}
+    </Text>
+  </View>
+);
+
+// ── Styles ────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bgMain },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, gap: Spacing.md,
-  },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center', ...Shadows.sm,
-  },
-  headerTitle: { flex: 1, fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textDark },
-  container: { padding: Spacing.xl, gap: Spacing.lg },
-  statsRow: {
-    flexDirection: 'row', backgroundColor: Colors.white,
-    borderRadius: Radius.xl, padding: Spacing.lg, justifyContent: 'space-around',
-  },
-  statItem: { alignItems: 'center', gap: 2 },
-  statValue: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold },
-  statLabel: { fontSize: FontSize.xs, color: Colors.textMuted },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
-  progressLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textMedium },
-  progressPct: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.primary },
-  progressBar: { height: 10, backgroundColor: Colors.bgInput, borderRadius: 5, overflow: 'hidden', marginBottom: Spacing.sm },
-  progressFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 5 },
-  progressSub: { fontSize: FontSize.xs, color: Colors.textMuted },
-  filterRow: { gap: Spacing.sm, paddingBottom: Spacing.xs },
-  filterPill: {
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: Radius.full, backgroundColor: Colors.white,
-    borderWidth: 1.5, borderColor: Colors.border,
-  },
-  filterPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterPillText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textMedium },
-  filterPillTextActive: { color: Colors.white },
-  list: { gap: Spacing.md },
-  recordCard: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing.lg, gap: Spacing.md,
-  },
-  recordIconWrap: { width: 44, height: 44, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
-  recordInfo: { flex: 1, gap: 4 },
-  recordTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  recordName: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.textDark, flex: 1 },
-  recordMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  recordDate: { fontSize: FontSize.xs, color: Colors.textMuted },
-  markDoneBtn: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: Radius.full, marginTop: 6 },
-  markDoneText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full, alignSelf: 'flex-start' },
-  statusText: { fontSize: 10, fontWeight: FontWeight.bold },
-  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
-  modalCard: {
-    backgroundColor: Colors.white, borderRadius: Radius.xxl,
-    padding: Spacing.xxl, alignItems: 'center', gap: Spacing.lg, width: '100%',
-  },
-  modalEmoji: { fontSize: 48 },
-  modalTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark },
-  modalSubtitle: { fontSize: FontSize.md, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
-  modalActions: { flexDirection: 'row', gap: Spacing.md, width: '100%' },
+  safe:           { flex: 1, backgroundColor: Colors.bgMain },
+  header:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
+  backBtn:        { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center', ...Shadows.sm },
+  headerTitle:    { flex: 1, textAlign: 'center', fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textDark },
+
+  listContent:    { padding: Spacing.xl, gap: Spacing.md, paddingBottom: 60 },
+
+  progressCard:   { backgroundColor: Colors.primary, borderRadius: Radius.xxl, padding: Spacing.xl, gap: Spacing.lg, marginBottom: Spacing.md },
+  progressTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  progressTitle:  { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.white },
+  progressSub:    { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  progressCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  progressPct:    { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.white },
+  progressBarBg:  { height: 8, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 4 },
+  progressBarFill:{ height: '100%', backgroundColor: Colors.white, borderRadius: 4 },
+  statsRow:       { flexDirection: 'row', justifyContent: 'space-around' },
+
+  tabsRow:        { gap: Spacing.sm, paddingBottom: Spacing.md },
+  tab:            { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: Radius.full, backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
+  tabActive:      { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tabText:        { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textMuted },
+  tabTextActive:  { color: Colors.white },
+  tabCount:       { backgroundColor: Colors.bgInput, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 },
+  tabCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  tabCountText:   { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.textMuted },
+  tabCountTextActive: { color: Colors.white },
+
+  card:           { flexDirection: 'row', backgroundColor: Colors.white, borderRadius: Radius.xl, overflow: 'hidden', alignItems: 'center' },
+  cardAccent:     { width: 4, alignSelf: 'stretch' },
+  cardBody:       { flex: 1, padding: Spacing.lg, gap: 6 },
+  cardTop:        { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.sm },
+  cardTitleRow:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  vaccineName:    { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.textDark },
+  vaccineDesc:    { fontSize: FontSize.xs, color: Colors.textMuted },
+  cardBottom:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flexWrap: 'wrap' },
+  cardChevron:    { paddingRight: Spacing.md },
+
+  statusBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full },
+  statusText:     { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+
+  metaItem:       { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText:       { fontSize: FontSize.xs, color: Colors.textMuted },
+  boosterBadge:   { backgroundColor: '#F3E8FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.full },
+  boosterText:    { fontSize: 10, fontWeight: FontWeight.bold, color: '#8B5CF6' },
+  typeBadge:      { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.full, borderWidth: 1 },
+  typeText:       { fontSize: 10, fontWeight: FontWeight.semibold },
+
+  centerWrap:     { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
+  loadingText:    { fontSize: FontSize.md, color: Colors.textMuted },
+  errorTitle:     { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textDark },
+  errorSub:       { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center' },
+  retryBtn:       { marginTop: Spacing.md, backgroundColor: Colors.primary, paddingHorizontal: Spacing.xxl, paddingVertical: Spacing.md, borderRadius: Radius.full },
+  retryText:      { color: Colors.white, fontWeight: FontWeight.bold },
+
+  emptyWrap:      { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
+  emptyEmoji:     { fontSize: 48 },
+  emptyTitle:     { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textDark },
+  emptySub:       { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: Spacing.xl },
+
+  modalBackdrop:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  modalSheet:     { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: Spacing.xl, paddingBottom: 36, alignItems: 'center', gap: Spacing.sm },
+  modalHandle:    { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border, marginBottom: Spacing.sm },
+  modalIconCircle:{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  modalName:      { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark, textAlign: 'center' },
+  modalDetails:   { width: '100%', backgroundColor: Colors.bgMain, borderRadius: Radius.xl, padding: Spacing.lg, gap: 2 },
+  cardSwitch:     { marginRight: Spacing.md },
+  modalToggleBtn:     { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderRadius: Radius.xl, paddingVertical: Spacing.lg, marginTop: Spacing.sm },
+  modalToggleBtnDone: { backgroundColor: Colors.success },
+  modalToggleBtnUndo: { backgroundColor: Colors.danger },
+  modalToggleTxt:     { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.white },
+  modalCloseBtn:  { width: '100%', backgroundColor: Colors.primary, borderRadius: Radius.xl, paddingVertical: Spacing.lg, alignItems: 'center', marginTop: Spacing.sm },
+  modalCloseTxt:  { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.white },
+});
+
+const chipSt = StyleSheet.create({
+  wrap: { alignItems: 'center', gap: 2 },
+  val:  { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.white },
+  lbl:  { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.75)' },
+});
+
+const detailSt = StyleSheet.create({
+  row:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
+  iconWrap:{ width: 28, alignItems: 'center' },
+  label:   { flex: 1, fontSize: FontSize.sm, color: Colors.textMuted },
+  value:   { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textDark, textAlign: 'right', flexShrink: 1 },
 });

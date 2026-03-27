@@ -15,6 +15,8 @@ import {
   tokenStorage,
   ENDPOINTS,
   STORAGE_KEYS,
+  BASE_URL,
+  mapError,
   DeviceType,
   ApiError,
 } from './api';
@@ -184,19 +186,69 @@ export const authService = {
     });
   },
 
-  // ── CHANGE PASSWORD ───────────────────────
-  // For logged in users who want to change password
-  // Endpoint: POST /auth/change-password
-  // Body:     { currentPassword, newPassword, newPasswordConfirm }
-  changePassword: async (payload: {
-    currentPassword:    string;
-    newPassword:        string;
-    newPasswordConfirm: string;
-  }): Promise<void> => {
-    await apiRequest(ENDPOINTS.CHANGE_PASSWORD, {
-      method: 'POST',
-      body:   payload,
-    });
+
+  // ── GET PROFILE ────────────────────────────
+  // GET /api/my-profile
+  // Returns full user profile including dateOfBirth, avatar URL
+  getProfile: async (): Promise<User> => {
+    const res = await apiRequest<User>('/users/my-profile');
+    return res.data;
+  },
+
+  // ── UPDATE PROFILE ──────────────────────────
+  // PATCH /api/my-profile
+  // Sends multipart when avatar is a new file, JSON otherwise
+  // Fields: name, dateOfBirth, avatar (file)
+  updateProfile: async (
+    payload: { name?: string; dateOfBirth?: string },
+    avatarUri?: string | null,
+  ): Promise<User> => {
+    const token      = await tokenStorage.get();
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    let response: Response;
+
+    if (avatarUri && avatarUri.startsWith('file://')) {
+      // Multipart — new avatar selected
+      const form     = new FormData();
+      if (payload.name)        form.append('name',        payload.name);
+      if (payload.dateOfBirth) form.append('dateOfBirth', payload.dateOfBirth);
+      const filename = avatarUri.split('/').pop() ?? 'avatar.jpg';
+      const ext      = filename.split('.').pop()?.toLowerCase() ?? 'jpg';
+      form.append('avatar', {
+        uri:  avatarUri,
+        name: filename,
+        type: ext === 'png' ? 'image/png' : 'image/jpeg',
+      } as any);
+
+      response = await fetch(`${BASE_URL}/users/my-profile`, {
+        method:  'PATCH',
+        headers: { 'Accept': 'application/json', ...authHeader },
+        body:    form,
+      });
+    } else {
+      // JSON — no new avatar
+      const body: Record<string, any> = {};
+      if (payload.name)        body.name        = payload.name;
+      if (payload.dateOfBirth) body.dateOfBirth = payload.dateOfBirth;
+
+      response = await fetch(`${BASE_URL}/users/my-profile`, {
+        method:  'PATCH',
+        headers: {
+          'Accept':       'application/json',
+          'Content-Type': 'application/json',
+          ...authHeader,
+        },
+        body: JSON.stringify(body),
+      });
+    }
+
+    const json = await response.json();
+    if (!response.ok) {
+      const raw = Array.isArray(json?.message) ? json.message[0] : json?.message ?? `Error ${response.status}`;
+      throw new Error(mapError(raw));
+    }
+    return json.data as User;
   },
 
   isAuthenticated: async (): Promise<boolean> => {

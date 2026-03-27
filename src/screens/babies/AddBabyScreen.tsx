@@ -26,6 +26,7 @@ import { useBabyStore }              from '../../store/babyStore';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { Button }                    from '../../components/ui/Button';
 import { Input }                     from '../../components/ui/Input';
+import { DatePickerInput }           from '../../components/ui/DatePickerInput';
 
 type Nav    = NativeStackNavigationProp<any>;
 type Params = { AddBaby?: { babyId?: string } };
@@ -62,9 +63,7 @@ export const AddBabyScreen: React.FC = () => {
   // Form state
   const [name,      setName]      = useState('');
   const [gender,    setGender]    = useState<'male' | 'female'>('male');
-  const [day,       setDay]       = useState('');
-  const [month,     setMonth]     = useState('');
-  const [year,      setYear]      = useState('');
+  const [dobISO,    setDobISO]    = useState<string | null>(null);
   const [weight,    setWeight]    = useState('');
   const [height,    setHeight]    = useState('');
   const [bloodType, setBloodType] = useState('');
@@ -77,11 +76,8 @@ export const AddBabyScreen: React.FC = () => {
     if (isEdit && babyToEdit) {
       setName(babyToEdit.name ?? '');
       setGender((babyToEdit.gender as any) ?? 'male');
-      if (babyToEdit.dateBirth) {
-        const { d, m, y } = isoToDMY(babyToEdit.dateBirth);
-        setDay(d); setMonth(m); setYear(y);
-      }
-      setWeight(String(babyToEdit.weight ?? babyToEdit.weight ?? ''));
+      setDobISO(babyToEdit.dateBirth ? babyToEdit.dateBirth.split('T')[0] : null);
+      setWeight(String(babyToEdit.weight ?? babyToEdit.wight ?? ''));
       setHeight(String(babyToEdit.height ?? ''));
       setBloodType(babyToEdit.bloodType ?? '');
       // Show existing avatar as preview
@@ -107,10 +103,7 @@ export const AddBabyScreen: React.FC = () => {
     const e: Record<string, string> = {};
     if (!name.trim() || name.trim().length < 3) e.name = 'Name must be at least 3 characters';
     if (name.trim().length > 20)                e.name = 'Name must be 20 characters or less';
-    const d = parseInt(day), m = parseInt(month), y = parseInt(year);
-    if (!d || d < 1 || d > 31)    e.day   = 'Invalid day';
-    if (!m || m < 1 || m > 12)    e.month = 'Invalid month';
-    if (!y || y < 2000 || y > new Date().getFullYear()) e.year = 'Invalid year';
+    if (!dobISO) e.dob = 'Please select a date of birth';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -230,29 +223,15 @@ export const AddBabyScreen: React.FC = () => {
               </View>
 
               {/* Date of Birth */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Date of Birth</Text>
-                <View style={styles.dobRow}>
-                  <Input
-                    value={day} onChangeText={setDay}
-                    placeholder="DD" keyboardType="numeric"
-                    maxLength={2} error={errors.day}
-                    style={styles.dobInput}
-                  />
-                  <Input
-                    value={month} onChangeText={setMonth}
-                    placeholder="MM" keyboardType="numeric"
-                    maxLength={2} error={errors.month}
-                    style={styles.dobInput}
-                  />
-                  <Input
-                    value={year} onChangeText={setYear}
-                    placeholder="YYYY" keyboardType="numeric"
-                    maxLength={4} error={errors.year}
-                    style={styles.dobInputYear}
-                  />
-                </View>
-              </View>
+              <DatePickerInput
+                label="Date of Birth"
+                value={dobISO}
+                onChange={setDobISO}
+                maxDate={new Date()}
+                minDate={new Date(2000, 0, 1)}
+                placeholder="Select baby's date of birth"
+                error={errors.dob}
+              />
 
               <Button label="Next →" onPress={() => { if (validateStep1()) setStep(2); }} size="lg" />
             </>

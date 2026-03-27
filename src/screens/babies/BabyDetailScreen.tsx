@@ -14,7 +14,7 @@ import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../co
 import { Card, SectionHeader, Badge } from '../../components/ui/Card';
 import { BabyAvatar } from '../../components/BabyAvatar';
 import { SensorReading } from '../../types';
-import { VaccinationRecord } from '../../constants/mockData';
+import { VaccinationRecord } from '../../types';
 
 const { width } = Dimensions.get('window');
 
@@ -55,7 +55,7 @@ export const BabyDetailScreen: React.FC = () => {
   useEffect(() => {
     if (!baby) return;
     sensorService.getLatestReading(babyId).then(setReading);
-    vaccinationService.getRecords(babyId).then(setVacRecords);
+    vaccinationService.getByType("all").then(setVacRecords);
   }, [babyId]);
 
   if (!baby) return null;
@@ -177,7 +177,7 @@ export const BabyDetailScreen: React.FC = () => {
           {/* Counts */}
           <View style={styles.vacCounts}>
             <View style={styles.vacCount}>
-              <Text style={[styles.vacCountNum, { color: Colors.success }]}>{stats.completed}</Text>
+              <Text style={[styles.vacCountNum, { color: Colors.success }]}>{stats.done}</Text>
               <Text style={styles.vacCountLabel}>Done</Text>
             </View>
             <View style={styles.vacCount}>
@@ -204,7 +204,7 @@ export const BabyDetailScreen: React.FC = () => {
               <View style={{ flex: 1 }}>
                 <Text style={styles.nextVacTitle}>
                   {nextVac.status === 'overdue' ? '⚠️ Overdue: ' : '📅 Next: '}
-                  {nextVac.vaccineName} (Dose {nextVac.doseNumber})
+                  {nextVac.vaccine?.name ?? 'Vaccine'} (Dose {nextVac.vaccine?.dose ?? '—'})
                 </Text>
                 <Text style={styles.nextVacDate}>
                   Scheduled: {new Date(nextVac.scheduledDate).toLocaleDateString('en-US', {
