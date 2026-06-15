@@ -21,6 +21,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/ui/Button';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Nav = NativeStackNavigationProp<any>;
 type Params = {
@@ -37,7 +38,8 @@ const RESEND_SECS = 60;
 export const OTPVerificationScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route      = useRoute<RouteProp<Params, 'OTPVerification'>>();
-  const { identifier, reason, mode } = route.params;
+  const { identifier, reason } = route.params;
+  const { t } = useTranslation();
 
   const { verifyOTP, requestOTP, isLoading, error, clearError } = useAuthStore();
 
@@ -131,9 +133,10 @@ const handleVerify = async () => {
             <View style={styles.iconCircle}>
               <Ionicons name="mail-outline" size={36} color={Colors.primary} />
             </View>
-            <Text style={styles.title}>Verify your account</Text>
+            <Text style={styles.title}>{t('auth.otpTitle')}</Text>
             <Text style={styles.subtitle}>
-              We sent a {OTP_LENGTH}-digit code to{'\n'}
+              {t('auth.otpSubtitle', { n: OTP_LENGTH })}
+              {'\n'}
               <Text style={styles.identifier}>{maskedIdentifier}</Text>
             </Text>
           </View>
@@ -170,7 +173,7 @@ const handleVerify = async () => {
 
           {/* Submit */}
           <Button
-            label="Verify"
+            label={t('auth.verify')}
             onPress={handleVerify}
             loading={isLoading}
             disabled={otp.length < OTP_LENGTH}
@@ -179,14 +182,14 @@ const handleVerify = async () => {
 
           {/* Resend */}
           <View style={styles.resendRow}>
-            <Text style={styles.resendText}>Didn't receive the code? </Text>
+            <Text style={styles.resendText}>{t('auth.resendPrompt')}</Text>
             {canResend ? (
               <TouchableOpacity onPress={handleResend} disabled={isLoading}>
-                <Text style={styles.resendLink}>Resend</Text>
+                <Text style={styles.resendLink}>{t('auth.resend')}</Text>
               </TouchableOpacity>
             ) : (
               <Text style={styles.resendTimer}>
-                Resend in <Text style={styles.resendTimerBold}>{countdown}s</Text>
+                {t('auth.resendIn', { s: countdown })}
               </Text>
             )}
           </View>

@@ -25,6 +25,7 @@ import { Button }                    from '../../components/ui/Button';
 import { Input }                     from '../../components/ui/Input';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { AuthStackParamList }        from '../../types';
+import { useTranslation }            from '../../i18n/useTranslation';
 
 // ── New Password Screen ───────────────────────
 type NewPasswordProps = {
@@ -34,6 +35,7 @@ type NewPasswordProps = {
 
 export const NewPasswordScreen: React.FC<NewPasswordProps> = ({ navigation, route }) => {
   const { identifier, otp } = route.params;
+  const { t } = useTranslation();
   const { verifyForgotPassword, isLoading, error, clearError } = useAuthStore();
 
   const [password,  setPassword]  = useState('');
@@ -42,11 +44,11 @@ export const NewPasswordScreen: React.FC<NewPasswordProps> = ({ navigation, rout
 
   const validate = () => {
     const e: typeof errors = {};
-    if (!password)              e.password = 'Password is required';
-    else if (password.length < 6) e.password = 'Minimum 6 characters';
-    else if (password.length > 20) e.password = 'Maximum 20 characters';
-    if (!confirm)               e.confirm  = 'Please confirm your password';
-    else if (password !== confirm) e.confirm = 'Passwords do not match';
+    if (!password)              e.password = t('auth.valPasswordRequired');
+    else if (password.length < 6) e.password = t('auth.valPasswordMin6');
+    else if (password.length > 20) e.password = t('auth.valPasswordMax20');
+    if (!confirm)               e.confirm  = t('auth.valConfirmRequired');
+    else if (password !== confirm) e.confirm = t('auth.valPasswordsMismatch');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -86,9 +88,10 @@ export const NewPasswordScreen: React.FC<NewPasswordProps> = ({ navigation, rout
             <View style={styles.iconCircle}>
               <Ionicons name="lock-closed-outline" size={38} color={Colors.primary} />
             </View>
-            <Text style={styles.title}>New Password</Text>
+            <Text style={styles.title}>{t('auth.newPasswordTitle')}</Text>
             <Text style={styles.subtitle}>
-              Create a strong password for{'\n'}
+              {t('auth.newPasswordSubtitle')}
+              {'\n'}
               <Text style={styles.identifierText}>{identifier}</Text>
             </Text>
           </View>
@@ -102,8 +105,8 @@ export const NewPasswordScreen: React.FC<NewPasswordProps> = ({ navigation, rout
 
           <View style={styles.form}>
             <Input
-              label="New Password"
-              placeholder="Min 6 characters"
+              label={t('auth.newPassword')}
+              placeholder={t('auth.passwordMinPh')}
               value={password}
               onChangeText={(v) => { setPassword(v); if (error) clearError(); }}
               isPassword
@@ -111,8 +114,8 @@ export const NewPasswordScreen: React.FC<NewPasswordProps> = ({ navigation, rout
               error={errors.password}
             />
             <Input
-              label="Confirm Password"
-              placeholder="Re-enter your password"
+              label={t('auth.confirmPassword')}
+              placeholder={t('auth.confirmPasswordPh')}
               value={confirm}
               onChangeText={(v) => { setConfirm(v); if (error) clearError(); }}
               isPassword
@@ -125,12 +128,12 @@ export const NewPasswordScreen: React.FC<NewPasswordProps> = ({ navigation, rout
           <View style={styles.hintCard}>
             <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
             <Text style={styles.hintText}>
-              Password must be 6–20 characters. Use a mix of letters and numbers for a stronger password.
+              {t('auth.passwordHintCard')}
             </Text>
           </View>
 
           <Button
-            label="Reset Password"
+            label={t('auth.resetPassword')}
             onPress={handleReset}
             loading={isLoading}
             size="lg"
@@ -146,23 +149,26 @@ type SuccessProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'VerificationSuccess'>;
 };
 
-export const VerificationSuccessScreen: React.FC<SuccessProps> = ({ navigation }) => (
-  <View style={successStyles.container}>
-    <View style={successStyles.circle}>
-      <Ionicons name="checkmark" size={60} color={Colors.white} />
+export const VerificationSuccessScreen: React.FC<SuccessProps> = ({ navigation }) => {
+  const { t } = useTranslation();
+  return (
+    <View style={successStyles.container}>
+      <View style={successStyles.circle}>
+        <Ionicons name="checkmark" size={60} color={Colors.white} />
+      </View>
+      <Text style={successStyles.title}>{t('auth.successTitle')}</Text>
+      <Text style={successStyles.subtitle}>
+        {t('auth.successSubtitle')}
+      </Text>
+      <Button
+        label={t('auth.goToSignIn')}
+        onPress={() => navigation.navigate('Login')}
+        style={successStyles.btn}
+        size="lg"
+      />
     </View>
-    <Text style={successStyles.title}>Password Reset!</Text>
-    <Text style={successStyles.subtitle}>
-      Your password has been successfully reset.{'\n'}You can now sign in with your new password.
-    </Text>
-    <Button
-      label="Go to Sign In"
-      onPress={() => navigation.navigate('Login')}
-      style={successStyles.btn}
-      size="lg"
-    />
-  </View>
-);
+  );
+};
 
 // ── Styles ────────────────────────────────────
 const styles = StyleSheet.create({

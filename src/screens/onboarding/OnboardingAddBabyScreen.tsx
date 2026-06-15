@@ -21,6 +21,9 @@ import { useAuthStore } from '../../store/authStore';
 import { DatePickerInput }           from '../../components/ui/DatePickerInput';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { useTranslation } from '../../i18n/useTranslation';
+import { formatListBabyAge } from '../../utils/babyAge';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 type Nav = NativeStackNavigationProp<any>;
@@ -30,30 +33,9 @@ type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 
 const BLOOD_TYPES: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-// Calculate age string from DOB
-const calcAge = (dob: string): string => {
-  if (!dob) return '';
-  const birth = new Date(dob);
-  if (isNaN(birth.getTime())) return '';
-  const now   = new Date();
-  const days  = Math.floor((now.getTime() - birth.getTime()) / 86400000);
-  if (days < 0)  return 'Future date';
-  if (days === 0) return 'Newborn';
-  const weeks  = Math.floor(days / 7);
-  const months = Math.floor(days / 30.44);
-  const years  = Math.floor(days / 365.25);
-  if (days < 30)  return `${days} day${days > 1 ? 's' : ''}`;
-  if (months < 3) return `${weeks} week${weeks > 1 ? 's' : ''}`;
-  if (years < 1) {
-    const remWeeks = Math.floor((days - months * 30.44) / 7);
-    return remWeeks > 0 ? `${months} Month${months > 1 ? 's' : ''}, ${remWeeks} Week${remWeeks > 1 ? 's' : ''}` : `${months} Month${months > 1 ? 's' : ''}`;
-  }
-  const remMonths = months - years * 12;
-  return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years} year${years > 1 ? 's' : ''}`;
-};
-
 export const OnboardingAddBabyScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
 
   const { addBaby }           = useBabyStore();
   const { completeOnboarding } = useAuthStore();
@@ -71,11 +53,9 @@ export const OnboardingAddBabyScreen: React.FC = () => {
   // Uses expo-image-picker — install if not present
   const handlePickPhoto = async () => {
     try {
-      // Dynamic import so it doesn't crash if not installed
-      const ImagePicker = await import('expo-image-picker');
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please allow access to your photo library.');
+        Alert.alert(t('onboarding.permPhotoTitle'), t('onboarding.permPhotoBody'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -86,7 +66,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
         setPhoto(result.assets[0].uri);
       }
     } catch {
-      Alert.alert('Photo picker unavailable', 'Run: npx expo install expo-image-picker');
+      Alert.alert(t('onboarding.pickerUnavailableTitle'), t('onboarding.pickerUnavailableBody'));
     }
   };
 
@@ -95,11 +75,11 @@ export const OnboardingAddBabyScreen: React.FC = () => {
   // ── Validation ────────────────────────────
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!name.trim() || name.trim().length < 2) e.name = 'Name must be at least 2 characters';
-    if (!gender) e.gender = 'Please select gender';
-    if (!dobISO) e.dob = 'Please select a date of birth';
-    if (weight && isNaN(Number(weight))) e.weight = 'Enter a valid weight';
-    if (height && isNaN(Number(height))) e.height = 'Enter a valid height';
+    if (!name.trim() || name.trim().length < 2) e.name = t('onboarding.nameMin2');
+    if (!gender) e.gender = t('onboarding.selectGender');
+    if (!dobISO) e.dob = t('addBaby.dobRequired');
+    if (weight && isNaN(Number(weight))) e.weight = t('onboarding.validWeight');
+    if (height && isNaN(Number(height))) e.height = t('onboarding.validHeight');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -114,7 +94,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
       await addBaby(
         {
           name:      name.trim(),
-          gender,                       // 'male' | 'female'
+          gender:    gender!,                       // validated above
           dateBirth,                    // YYYY-MM-DD
           height:    height ? Number(height) : undefined,
           wight:     weight ? Number(weight) : undefined, // backend typo
@@ -132,13 +112,13 @@ export const OnboardingAddBabyScreen: React.FC = () => {
         babyPhoto: photo,
       });
     } catch (err: any) {
-      setErrors({ name: err.message ?? 'Failed to save. Please try again.' });
+      setErrors({ name: err.message ?? t('onboarding.saveFailed') });
     } finally {
       setSaving(false);
     }
   };
 
-  const agePreview = dobISO ? calcAge(dobISO) : null;
+  const agePreview = dobISO ? formatListBabyAge(dobISO, t) : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -147,8 +127,8 @@ export const OnboardingAddBabyScreen: React.FC = () => {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Add Baby Details</Text>
-            <Text style={styles.subtitle}>Tell us about your little one</Text>
+            <Text style={styles.title}>{t('onboarding.addDetailsTitle')}</Text>
+            <Text style={styles.subtitle}>{t('onboarding.addDetailsSubtitle')}</Text>
           </View>
 
           {/* Progress dots */}
@@ -166,20 +146,20 @@ export const OnboardingAddBabyScreen: React.FC = () => {
               ) : (
                 <View style={styles.photoPlaceholder}>
                   <Ionicons name="camera-outline" size={32} color={Colors.primary} />
-                  <Text style={styles.photoPlaceholderText}>Add Photo</Text>
+                  <Text style={styles.photoPlaceholderText}>{t('onboarding.addPhoto')}</Text>
                 </View>
               )}
               <View style={styles.photoBadge}>
                 <Ionicons name="camera" size={14} color={Colors.white} />
               </View>
             </TouchableOpacity>
-            <Text style={styles.photoHint}>Optional — tap to upload</Text>
+            <Text style={styles.photoHint}>{t('onboarding.photoHintOptional')}</Text>
           </View>
 
           {/* Name */}
           <Input
-            label="Baby's Name"
-            placeholder="Enter baby's name"
+            label={t('addBaby.babyName')}
+            placeholder={t('addBaby.babyNamePh')}
             value={name}
             onChangeText={v => { setName(v); setErrors(p => ({ ...p, name: '' })); }}
             leftIcon="person-outline"
@@ -188,7 +168,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
 
           {/* Gender */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Gender</Text>
+            <Text style={styles.fieldLabel}>{t('addBaby.gender')}</Text>
             <View style={styles.genderRow}>
               {(['male', 'female'] as Gender[]).map(g => (
                 <TouchableOpacity
@@ -198,7 +178,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
                 >
                   <Text style={styles.genderEmoji}>{g === 'male' ? '👦' : '👧'}</Text>
                   <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
-                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                    {g === 'male' ? t('addBaby.male') : t('addBaby.female')}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -209,18 +189,18 @@ export const OnboardingAddBabyScreen: React.FC = () => {
           {/* DOB */}
           <View style={styles.fieldGroup}>
             <DatePickerInput
-              label="Date of Birth"
+              label={t('addBaby.dob')}
               value={dobISO}
               onChange={setDobISO}
               maxDate={new Date()}
               minDate={new Date(2000, 0, 1)}
-              placeholder="Select baby's date of birth"
+              placeholder={t('addBaby.dobPh')}
               error={errors.dob}
             />
             {agePreview && !errors.dob && (
               <View style={styles.agePreview}>
                 <Ionicons name="time-outline" size={14} color={Colors.primary} />
-                <Text style={styles.agePreviewText}>Age: {agePreview}</Text>
+                <Text style={styles.agePreviewText}>{t('onboarding.ageLabel')}{agePreview}</Text>
               </View>
             )}
           </View>
@@ -229,8 +209,8 @@ export const OnboardingAddBabyScreen: React.FC = () => {
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Input
-                label="Weight (kg)"
-                placeholder="e.g. 3.5"
+                label={t('addBaby.weightKg')}
+                placeholder={t('addBaby.weightPh')}
                 value={weight}
                 onChangeText={v => { setWeight(v); setErrors(p => ({ ...p, weight: '' })); }}
                 keyboardType="decimal-pad"
@@ -240,8 +220,8 @@ export const OnboardingAddBabyScreen: React.FC = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Input
-                label="Height (cm)"
-                placeholder="e.g. 50"
+                label={t('addBaby.heightCm')}
+                placeholder={t('addBaby.heightPh')}
                 value={height}
                 onChangeText={v => { setHeight(v); setErrors(p => ({ ...p, height: '' })); }}
                 keyboardType="decimal-pad"
@@ -253,7 +233,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
 
           {/* Blood Type */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Blood Type <Text style={styles.optional}>(optional)</Text></Text>
+            <Text style={styles.fieldLabel}>{t('addBaby.bloodType')} <Text style={styles.optional}>{t('addBaby.optional')}</Text></Text>
             <View style={styles.bloodGrid}>
               {BLOOD_TYPES.map(bt => (
                 <TouchableOpacity
@@ -268,7 +248,7 @@ export const OnboardingAddBabyScreen: React.FC = () => {
           </View>
 
           {/* Save */}
-          <Button label="Save & Continue" onPress={handleSave} loading={saving} size="lg" />
+          <Button label={t('onboarding.saveContinue')} onPress={handleSave} loading={saving} size="lg" />
 
           <View style={{ height: Spacing.xl }} />
         </ScrollView>

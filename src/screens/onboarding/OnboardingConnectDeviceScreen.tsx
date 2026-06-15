@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/ui/Button';
+import { useTranslation } from '../../i18n/useTranslation';
 
 const { width } = Dimensions.get('window');
 type Nav    = NativeStackNavigationProp<any>;
@@ -49,6 +50,7 @@ export const OnboardingConnectDeviceScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route      = useRoute<RouteProp<Params, 'OnboardingConnectDevice'>>();
   const { babyName } = route.params;
+  const { t } = useTranslation();
   const { completeOnboarding } = useAuthStore();
 
   const handleSkip = async () => {
@@ -67,10 +69,11 @@ export const OnboardingConnectDeviceScreen: React.FC = () => {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Connect a Device</Text>
+          <Text style={styles.title}>{t('onboarding.connectTitle')}</Text>
           <Text style={styles.subtitle}>
-            Link a Lullaby sensor to monitor{'\n'}
-            <Text style={styles.babyName}>{babyName}</Text>'s health in real time
+            {t('onboarding.connectSubtitle')}
+            <Text style={styles.babyName}>{babyName}</Text>
+            {t('onboarding.connectSuffix')}
           </Text>
         </View>
 
@@ -96,9 +99,9 @@ export const OnboardingConnectDeviceScreen: React.FC = () => {
         {/* Steps */}
         <View style={styles.steps}>
           {[
-            { icon: 'power-outline',     text: 'Turn on your Lullaby device' },
-            { icon: 'bluetooth-outline', text: 'Make sure Bluetooth is enabled' },
-            { icon: 'wifi-outline',      text: 'Keep device within 10 meters' },
+            { icon: 'power-outline',     text: t('onboarding.stepPower') },
+            { icon: 'bluetooth-outline', text: t('onboarding.stepBt') },
+            { icon: 'wifi-outline',      text: t('onboarding.stepRange') },
           ].map((step, i) => (
             <View key={i} style={styles.step}>
               <View style={styles.stepIcon}>
@@ -112,19 +115,19 @@ export const OnboardingConnectDeviceScreen: React.FC = () => {
         {/* Coming soon badge */}
         <View style={styles.comingSoonBadge}>
           <Ionicons name="construct-outline" size={14} color={Colors.warning} />
-          <Text style={styles.comingSoonText}>Device pairing coming soon</Text>
+          <Text style={styles.comingSoonText}>{t('onboarding.pairingSoon')}</Text>
         </View>
 
         {/* Actions */}
         <View style={styles.actions}>
           <Button
-            label="Scan for Devices"
+            label={t('onboarding.scanDevices')}
             onPress={handleConnect}
             disabled
             size="lg"
           />
           <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-            <Text style={styles.skipText}>Skip for now</Text>
+            <Text style={styles.skipText}>{t('onboarding.skipForNow')}</Text>
             <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>

@@ -162,7 +162,26 @@ export const MOCK_DAILY_REPORT: DailyReport = {
     temperature: 36.4 + Math.random() * 0.8,
     cryCount:    Math.random() > 0.75 ? 1 : 0,
   })),
+  cryReasonBreakdown: [
+    { reason: 'hungry', count: 2 },
+    { reason: 'tired', count: 2 },
+    { reason: 'unknown', count: 1 },
+  ],
 };
+
+/** Mock rows for Reports screen (shape matches UI expectations) */
+export const MOCK_VACCINATION_RECORDS: {
+  id: string;
+  vaccineName: string;
+  doseNumber: number;
+  scheduledDate: string;
+  administeredDate?: string;
+  status: 'completed' | 'overdue' | 'upcoming';
+}[] = [
+  { id: 'vr1', vaccineName: 'BCG', doseNumber: 1, scheduledDate: '2024-06-15', administeredDate: '2024-06-15', status: 'completed' },
+  { id: 'vr2', vaccineName: 'Hep B', doseNumber: 1, scheduledDate: '2024-07-01', status: 'upcoming' },
+  { id: 'vr3', vaccineName: 'DTaP', doseNumber: 1, scheduledDate: '2024-05-01', status: 'overdue' },
+];
 
 // ── Notifications ─────────────────────────────
 export const MOCK_NOTIFICATIONS = [

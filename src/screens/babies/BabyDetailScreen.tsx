@@ -15,6 +15,8 @@ import { Card, SectionHeader, Badge } from '../../components/ui/Card';
 import { BabyAvatar } from '../../components/BabyAvatar';
 import { SensorReading } from '../../types';
 import { VaccinationRecord } from '../../types';
+import { useTranslation } from '../../i18n/useTranslation';
+import { formatDetailBabyAge } from '../../utils/babyAge';
 
 const { width } = Dimensions.get('window');
 
@@ -31,21 +33,12 @@ const InfoRow: React.FC<{ icon: string; label: string; value: string }> = ({ ico
   </View>
 );
 
-const getAge = (dob: string) => {
-  const diff = Date.now() - new Date(dob).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days < 30) return `${days} days`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months > 1 ? 's' : ''}`;
-  const years = Math.floor(months / 12);
-  const rem = months % 12;
-  return rem > 0 ? `${years}y ${rem}mo` : `${years} year${years > 1 ? 's' : ''}`;
-};
-
 export const BabyDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<RouteParams, 'BabyDetail'>>();
   const { babyId } = route.params;
+  const { t, locale } = useTranslation();
+  const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-US';
   const { babies, setActiveBaby } = useBabyStore();
   const baby = babies.find(b => b.id === babyId);
 
@@ -71,7 +64,7 @@ export const BabyDetailScreen: React.FC = () => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Baby Profile</Text>
+        <Text style={styles.headerTitle}>{t('babyDetail.title')}</Text>
         <TouchableOpacity
           style={styles.editBtn}
           onPress={() => navigation.navigate('AddBaby', { babyId: baby.id })}
@@ -87,13 +80,16 @@ export const BabyDetailScreen: React.FC = () => {
             <BabyAvatar baby={baby} size={80} />
             <View style={styles.heroInfo}>
               <Text style={styles.heroName}>{baby.name}</Text>
-              <Text style={styles.heroAge}>{getAge(baby.dateBirth)} old</Text>
+              <Text style={styles.heroAge}>
+                {formatDetailBabyAge(baby.dateBirth, t)}
+                {t('babyDetail.oldSuffix')}
+              </Text>
               <View style={styles.heroTags}>
                 <Badge
-                  label={baby.gender === 'male' ? '👦 Boy' : '👧 Girl'}
+                  label={baby.gender === 'male' ? t('babyDetail.boy') : t('babyDetail.girl')}
                   variant="primary"
                 />
-                {baby.deviceId && <Badge label="📡 Connected" variant="success" />}
+                {baby.deviceId && <Badge label={t('babyDetail.connected')} variant="success" />}
               </View>
             </View>
           </View>
@@ -102,22 +98,22 @@ export const BabyDetailScreen: React.FC = () => {
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{baby.weight ?? baby.wight ?? '—'}</Text>
-              <Text style={styles.heroStatLabel}>kg</Text>
+              <Text style={styles.heroStatLabel}>{t('babyDetail.kg')}</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{baby.height ?? '—'}</Text>
-              <Text style={styles.heroStatLabel}>cm</Text>
+              <Text style={styles.heroStatLabel}>{t('babyDetail.cm')}</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{baby.bloodType ?? '—'}</Text>
-              <Text style={styles.heroStatLabel}>blood type</Text>
+              <Text style={styles.heroStatLabel}>{t('babyDetail.bloodType')}</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{stats.percentage}%</Text>
-              <Text style={styles.heroStatLabel}>vaccinated</Text>
+              <Text style={styles.heroStatLabel}>{t('babyDetail.vaccinated')}</Text>
             </View>
           </View>
         </View>
@@ -128,20 +124,20 @@ export const BabyDetailScreen: React.FC = () => {
           onPress={() => { setActiveBaby(baby.id); navigation.goBack(); }}
         >
           <Ionicons name="radio-button-on-outline" size={18} color={Colors.primary} />
-          <Text style={styles.setActiveBtnText}>Set as Active Baby</Text>
+          <Text style={styles.setActiveBtnText}>{t('babyDetail.setActive')}</Text>
         </TouchableOpacity>
 
         {/* Live Vitals */}
         {reading && (
           <>
-            <SectionHeader title="Live Vitals" />
+            <SectionHeader title={t('babyDetail.liveVitals')} />
             <Card style={styles.vitalsCard}>
               <View style={styles.vitalsGrid}>
                 {[
-                  { icon: 'thermometer-outline', label: 'Temp', value: `${reading.temperature.toFixed(1)}°C`, color: '#FF7043' },
-                  { icon: 'heart-outline', label: 'Heart', value: `${reading.heartRate} bpm`, color: '#E91E63' },
-                  { icon: 'water-outline', label: 'Breath', value: `${reading.breathingRate}/min`, color: Colors.success },
-                  { icon: 'pulse-outline', label: 'SpO₂', value: `${reading.oxygenLevel}%`, color: Colors.info },
+                  { icon: 'thermometer-outline', label: t('babyDetail.temp'), value: `${reading.temperature.toFixed(1)}°C`, color: '#FF7043' },
+                  { icon: 'heart-outline', label: t('babyDetail.heart'), value: `${reading.heartRate} bpm`, color: '#E91E63' },
+                  { icon: 'water-outline', label: t('babyDetail.breath'), value: `${reading.breathingRate}/min`, color: Colors.success },
+                  { icon: 'pulse-outline', label: t('babyDetail.spo2'), value: `${reading.oxygenLevel}%`, color: Colors.info },
                 ].map(item => (
                   <View key={item.label} style={styles.vitalItem}>
                     <View style={[styles.vitalIcon, { backgroundColor: item.color + '20' }]}>
@@ -158,15 +154,15 @@ export const BabyDetailScreen: React.FC = () => {
 
         {/* Vaccination Summary */}
         <SectionHeader
-          title="Vaccinations"
-          action="View All"
+          title={t('babyDetail.vaccinations')}
+          action={t('babyDetail.viewAll')}
           onAction={() => navigation.navigate('Vaccination', { babyId: baby.id })}
         />
         <Card style={styles.vacCard}>
           {/* Progress bar */}
           <View style={styles.vacProgress}>
             <View style={styles.vacProgressHeader}>
-              <Text style={styles.vacProgressLabel}>Overall Progress</Text>
+              <Text style={styles.vacProgressLabel}>{t('babyDetail.overallProgress')}</Text>
               <Text style={styles.vacProgressPct}>{stats.percentage}%</Text>
             </View>
             <View style={styles.vacProgressBar}>
@@ -178,15 +174,15 @@ export const BabyDetailScreen: React.FC = () => {
           <View style={styles.vacCounts}>
             <View style={styles.vacCount}>
               <Text style={[styles.vacCountNum, { color: Colors.success }]}>{stats.done}</Text>
-              <Text style={styles.vacCountLabel}>Done</Text>
+              <Text style={styles.vacCountLabel}>{t('babyDetail.done')}</Text>
             </View>
             <View style={styles.vacCount}>
               <Text style={[styles.vacCountNum, { color: Colors.warning }]}>{stats.upcoming}</Text>
-              <Text style={styles.vacCountLabel}>Upcoming</Text>
+              <Text style={styles.vacCountLabel}>{t('babyDetail.upcoming')}</Text>
             </View>
             <View style={styles.vacCount}>
               <Text style={[styles.vacCountNum, { color: Colors.danger }]}>{stats.overdue}</Text>
-              <Text style={styles.vacCountLabel}>Overdue</Text>
+              <Text style={styles.vacCountLabel}>{t('babyDetail.overdue')}</Text>
             </View>
           </View>
 
@@ -203,11 +199,12 @@ export const BabyDetailScreen: React.FC = () => {
               />
               <View style={{ flex: 1 }}>
                 <Text style={styles.nextVacTitle}>
-                  {nextVac.status === 'overdue' ? '⚠️ Overdue: ' : '📅 Next: '}
-                  {nextVac.vaccine?.name ?? 'Vaccine'} (Dose {nextVac.vaccine?.dose ?? '—'})
+                  {nextVac.status === 'overdue' ? t('babyDetail.nextOverdue') : t('babyDetail.nextUpcoming')}
+                  {nextVac.vaccine?.name ?? t('babyDetail.vaccine')} ({t('babyDetail.dose')} {nextVac.vaccine?.dose ?? '—'})
                 </Text>
                 <Text style={styles.nextVacDate}>
-                  Scheduled: {new Date(nextVac.scheduledDate).toLocaleDateString('en-US', {
+                  {t('babyDetail.scheduled')}{' '}
+                  {new Date(nextVac.scheduledDate).toLocaleDateString(dateLocale, {
                     month: 'short', day: 'numeric', year: 'numeric'
                   })}
                 </Text>
@@ -217,34 +214,34 @@ export const BabyDetailScreen: React.FC = () => {
         </Card>
 
         {/* Quick Info */}
-        <SectionHeader title="Details" />
+        <SectionHeader title={t('babyDetail.details')} />
         <Card>
-          <InfoRow icon="calendar-outline" label="Date of Birth"
-            value={baby.dateBirth ? new Date(baby.dateBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'} />
+          <InfoRow icon="calendar-outline" label={t('babyDetail.dob')}
+            value={baby.dateBirth ? new Date(baby.dateBirth).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—'} />
           <View style={styles.rowDivider} />
-          <InfoRow icon="person-outline" label="Gender"
-            value={baby.gender === 'male' ? 'Boy' : 'Girl'} />
+          <InfoRow icon="person-outline" label={t('babyDetail.gender')}
+            value={baby.gender === 'male' ? t('babyDetail.boyShort') : t('babyDetail.girlShort')} />
           {baby.bloodType && <>
             <View style={styles.rowDivider} />
-            <InfoRow icon="water-outline" label="Blood Type" value={baby.bloodType} />
+            <InfoRow icon="water-outline" label={t('babyDetail.bloodType')} value={baby.bloodType} />
           </>}
           { (baby.weight ?? baby.wight) && (
               <>
                 <View style={styles.rowDivider} />
                 <InfoRow 
                   icon="scale-outline" 
-                  label="Weight" 
-                  value={`${baby.weight ?? baby.wight} kg`} 
+                  label={t('babyDetail.weight')} 
+                  value={`${baby.weight ?? baby.wight} ${t('babyDetail.kg')}`} 
                 />
               </>
           )}
           {baby.height && <>
             <View style={styles.rowDivider} />
-            <InfoRow icon="resize-outline" label="Height" value={`${baby.height} cm`} />
+            <InfoRow icon="resize-outline" label={t('babyDetail.height')} value={`${baby.height} ${t('babyDetail.cm')}`} />
           </>}
           <View style={styles.rowDivider} />
-          <InfoRow icon="radio-outline" label="Device"
-            value={baby.deviceId ? 'Connected' : 'Not paired'} />
+          <InfoRow icon="radio-outline" label={t('babyDetail.device')}
+            value={baby.deviceId ? t('babyDetail.deviceConnected') : t('babyDetail.deviceNotPaired')} />
         </Card>
 
         <View style={{ height: Spacing.xl }} />

@@ -4,12 +4,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, FontSize, FontWeight } from '../../constants/theme';
 import { AuthStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Splash'>;
 };
 
 export const SplashScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const scaleAnim = React.useRef(new Animated.Value(0.8)).current;
   const { initialize, isAuthenticated } = useAuthStore();
@@ -56,7 +58,7 @@ export const SplashScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.logoText}>
             Lull<Text style={styles.logoTextAccent}>aby</Text>
           </Text>
-          <Text style={styles.tagline}>Smart Baby Monitor</Text>
+          <Text style={styles.tagline}>{t('splash.tagline')}</Text>
         </View>
       </Animated.View>
 

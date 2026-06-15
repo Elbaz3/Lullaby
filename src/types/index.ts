@@ -176,6 +176,8 @@ export interface DailyReport {
   airQualityAvg:  number;
   overallScore:   number;
   hourlyData:     { hour: number; cryCount: number; heartRate: number; temperature: number }[];
+  /** Optional breakdown for reports / PDF mock */
+  cryReasonBreakdown?: { reason: string; count: number }[];
 }
 
 // ── API Helpers ───────────────────────────────

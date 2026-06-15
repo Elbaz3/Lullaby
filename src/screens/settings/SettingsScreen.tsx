@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useAuthStore } from "../../store/authStore";
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuthStore } from '../../store/authStore';
+import { useLocaleStore } from '../../store/localeStore';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { BabyAvatar } from '../../components/BabyAvatar';
+import { useTranslation } from '../../i18n/useTranslation';
+import type { AppLocale } from '../../types/locale';
 
 const SettingRow: React.FC<{
   icon: string;
@@ -26,7 +29,8 @@ const SettingRow: React.FC<{
   toggleValue?: boolean;
   onToggle?: (val: boolean) => void;
   danger?: boolean;
-}> = ({ icon, label, value, onPress, toggle, toggleValue, onToggle, danger }) => (
+  isRTL?: boolean;
+}> = ({ icon, label, value, onPress, toggle, toggleValue, onToggle, danger, isRTL }) => (
   <TouchableOpacity
     style={styles.settingRow}
     onPress={onPress}
@@ -54,39 +58,64 @@ const SettingRow: React.FC<{
       <View style={styles.settingRight}>
         {value && <Text style={styles.settingValue}>{value}</Text>}
         {onPress && (
-          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          <View style={isRTL ? styles.chevronFlip : undefined}>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          </View>
         )}
       </View>
     )}
   </TouchableOpacity>
 );
 
+const localeDisplay: Record<AppLocale, 'settings.langEnglish' | 'settings.langArabic'> = {
+  en: 'settings.langEnglish',
+  ar: 'settings.langArabic',
+};
+
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { user, logout } = useAuthStore();
+  const locale = useLocaleStore((s) => s.locale);
+  const setLocale = useLocaleStore((s) => s.setLocale);
+  const { t, isRTL } = useTranslation();
   const [notifications, setNotifications] = React.useState(true);
   const [cryAlerts, setCryAlerts] = React.useState(true);
   const [vitalAlerts, setVitalAlerts] = React.useState(true);
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
+  const openLanguagePicker = () => {
+    Alert.alert(t('settings.languagePickerTitle'), undefined, [
       {
-        text: 'Logout',
+        text: t('settings.langEnglish'),
+        onPress: () => setLocale('en'),
+      },
+      {
+        text: t('settings.langArabic'),
+        onPress: () => setLocale('ar'),
+      },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(t('settings.logoutTitle'), t('settings.logoutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.logout'),
         style: 'destructive',
         onPress: () => logout(),
       },
     ]);
   };
 
+  const sectionTitleStyle = [styles.sectionTitle, isRTL && styles.alignEnd];
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
+        <Text style={[styles.title, isRTL && styles.alignEnd]}>{t('settings.title')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Profile Card */}
         <View style={[styles.profileCard, Shadows.md]}>
           <View style={styles.avatarWrap}>
             {user?.avatar ? (
@@ -96,127 +125,110 @@ export const SettingsScreen: React.FC = () => {
             )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name ?? 'User'}</Text>
-            <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
+            <Text style={[styles.profileName, isRTL && styles.alignEnd]}>{user?.name ?? t('common.user')}</Text>
+            <Text style={[styles.profileEmail, isRTL && styles.alignEnd]}>{user?.email ?? ''}</Text>
           </View>
-          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate("Profile")}>
+          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('Profile')}>
             <Ionicons name="pencil-outline" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* Notifications */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
+          <Text style={sectionTitleStyle}>{t('settings.notifications')}</Text>
           <View style={styles.sectionCard}>
             <SettingRow
               icon="notifications-outline"
-              label="Push Notifications"
+              label={t('settings.pushNotifications')}
               toggle
               toggleValue={notifications}
               onToggle={setNotifications}
+              isRTL={isRTL}
             />
             <View style={styles.rowDivider} />
             <SettingRow
               icon="ear-outline"
-              label="Cry Alerts"
+              label={t('settings.cryAlerts')}
               toggle
               toggleValue={cryAlerts}
               onToggle={setCryAlerts}
+              isRTL={isRTL}
             />
             <View style={styles.rowDivider} />
             <SettingRow
               icon="heart-outline"
-              label="Vital Sign Alerts"
+              label={t('settings.vitalSignAlerts')}
               toggle
               toggleValue={vitalAlerts}
               onToggle={setVitalAlerts}
+              isRTL={isRTL}
             />
           </View>
         </View>
 
-        {/* Device */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Device</Text>
+          <Text style={sectionTitleStyle}>{t('settings.device')}</Text>
           <View style={styles.sectionCard}>
-            <SettingRow
-              icon="bluetooth-outline"
-              label="Pair New Device"
-              onPress={() => {}}
-            />
+            <SettingRow icon="bluetooth-outline" label={t('settings.pairNewDevice')} onPress={() => {}} isRTL={isRTL} />
             <View style={styles.rowDivider} />
             <SettingRow
               icon="wifi-outline"
-              label="Connection Status"
-              value="Connected"
+              label={t('settings.connectionStatus')}
+              value={t('settings.connected')}
               onPress={() => {}}
+              isRTL={isRTL}
             />
             <View style={styles.rowDivider} />
-            <SettingRow
-              icon="battery-half-outline"
-              label="Device Battery"
-              value="82%"
-            />
+            <SettingRow icon="battery-half-outline" label={t('settings.deviceBattery')} value="82%" isRTL={isRTL} />
           </View>
         </View>
 
-        {/* App */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App</Text>
+          <Text style={sectionTitleStyle}>{t('settings.app')}</Text>
           <View style={styles.sectionCard}>
             <SettingRow
               icon="globe-outline"
-              label="Language"
-              value="English"
-              onPress={() => {}}
+              label={t('settings.language')}
+              value={t(localeDisplay[locale])}
+              onPress={openLanguagePicker}
+              isRTL={isRTL}
             />
             <View style={styles.rowDivider} />
             <SettingRow
               icon="moon-outline"
-              label="Dark Mode"
-              value="System"
+              label={t('settings.darkMode')}
+              value={t('settings.system')}
               onPress={() => {}}
+              isRTL={isRTL}
             />
             <View style={styles.rowDivider} />
             <SettingRow
               icon="information-circle-outline"
-              label="App Version"
+              label={t('settings.appVersion')}
               value="1.0.0"
+              isRTL={isRTL}
             />
           </View>
         </View>
 
-        {/* Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
+          <Text style={sectionTitleStyle}>{t('settings.support')}</Text>
           <View style={styles.sectionCard}>
-            <SettingRow
-              icon="help-circle-outline"
-              label="Help & FAQ"
-              onPress={() => {}}
-            />
+            <SettingRow icon="help-circle-outline" label={t('settings.helpFaq')} onPress={() => {}} isRTL={isRTL} />
             <View style={styles.rowDivider} />
-            <SettingRow
-              icon="mail-outline"
-              label="Contact Support"
-              onPress={() => {}}
-            />
+            <SettingRow icon="mail-outline" label={t('settings.contactSupport')} onPress={() => {}} isRTL={isRTL} />
             <View style={styles.rowDivider} />
-            <SettingRow
-              icon="document-text-outline"
-              label="Privacy Policy"
-              onPress={() => {}}
-            />
+            <SettingRow icon="document-text-outline" label={t('settings.privacyPolicy')} onPress={() => {}} isRTL={isRTL} />
           </View>
         </View>
 
-        {/* Logout */}
         <View style={styles.section}>
           <View style={styles.sectionCard}>
             <SettingRow
               icon="log-out-outline"
-              label="Logout"
+              label={t('settings.logout')}
               onPress={handleLogout}
               danger
+              isRTL={isRTL}
             />
           </View>
         </View>
@@ -234,6 +246,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
   },
   title: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark },
+  alignEnd: { textAlign: 'right' },
   container: { padding: Spacing.xl, gap: Spacing.lg },
   profileCard: {
     flexDirection: 'row',
@@ -319,9 +332,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textMuted,
   },
+  chevronFlip: { transform: [{ scaleX: -1 }] },
   rowDivider: {
     height: 1,
     backgroundColor: Colors.divider,
-    marginLeft: 66,
+    marginStart: 66,
   },
 });

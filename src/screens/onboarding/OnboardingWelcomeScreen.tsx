@@ -10,12 +10,14 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, FontSize, FontWeight, Spacing, Shadows } from '../../constants/theme';
 import { Button } from '../../components/ui/Button';
+import { useTranslation } from '../../i18n/useTranslation';
 
 const { width } = Dimensions.get('window');
 type Nav = NativeStackNavigationProp<any>;
 
 export const OnboardingWelcomeScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -37,12 +39,9 @@ export const OnboardingWelcomeScreen: React.FC = () => {
 
         {/* Text */}
         <View style={styles.textSection}>
-          <Text style={styles.title}>My Babies</Text>
+          <Text style={styles.title}>{t('onboarding.welcomeTitle')}</Text>
           <Text style={styles.subtitle}>
-            Start by adding your child to{'\n'}
-            monitor their health, daily{'\n'}
-            routine, and vaccinations with{'\n'}
-            ease.
+            {t('onboarding.welcomeSubtitle')}
           </Text>
         </View>
 
@@ -56,7 +55,7 @@ export const OnboardingWelcomeScreen: React.FC = () => {
         {/* CTA */}
         <View style={styles.actions}>
           <Button
-            label="Add New Baby"
+            label={t('onboarding.addBabyCta')}
             onPress={() => navigation.navigate('OnboardingAddBaby')}
             size="lg"
           />

@@ -7,9 +7,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { assistantService } from '../../services/assistant.service';
-import { SUGGESTED_QUESTIONS, AssistantMessage } from '../../constants/mockData';
+import { AssistantMessage } from '../../constants/mockData';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { useBabyStore } from '../../store/babyStore';
+import { useTranslation } from '../../i18n/useTranslation';
+
+const SUGGESTION_KEYS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'] as const;
 
 const TypingIndicator: React.FC = () => {
   const anims = [
@@ -47,18 +50,21 @@ const typingStyles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.textMuted },
 });
 
-const INITIAL_MESSAGES: AssistantMessage[] = [
-  {
-    id: 'welcome',
-    role: 'assistant',
-    content: "👋 Hi! I'm your Baby Care Assistant.\n\nI can help you with feeding schedules, sleep tips, cry interpretation, vaccination info, and general baby health questions.\n\nWhat would you like to know?",
-    timestamp: new Date().toISOString(),
-  },
-];
-
 export const AssistantScreen: React.FC = () => {
   const { activeBaby } = useBabyStore();
-  const [messages, setMessages] = useState<AssistantMessage[]>(INITIAL_MESSAGES);
+  const { t } = useTranslation();
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
+
+  useEffect(() => {
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: t('assistant.welcomeMsg'),
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  }, [t]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -97,7 +103,7 @@ export const AssistantScreen: React.FC = () => {
       setMessages(prev => [...prev, {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        content: "Sorry, I'm having trouble responding right now. Please try again.",
+        content: t('assistant.errorMsg'),
         timestamp: new Date().toISOString(),
       }]);
     } finally {
@@ -105,7 +111,9 @@ export const AssistantScreen: React.FC = () => {
     }
   };
 
-  const clearChat = () => setMessages(INITIAL_MESSAGES);
+  const clearChat = () => setMessages([
+    { id: 'welcome', role: 'assistant', content: t('assistant.welcomeMsg'), timestamp: new Date().toISOString() },
+  ]);
 
   const showSuggestions = messages.length <= 1;
 
@@ -118,10 +126,10 @@ export const AssistantScreen: React.FC = () => {
             <Text style={styles.botAvatarEmoji}>🤖</Text>
           </View>
           <View>
-            <Text style={styles.headerTitle}>Baby Care Assistant</Text>
+            <Text style={styles.headerTitle}>{t('assistant.title')}</Text>
             <View style={styles.onlineRow}>
               <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>Always available</Text>
+              <Text style={styles.onlineText}>{t('assistant.online')}</Text>
             </View>
           </View>
         </View>
@@ -135,7 +143,7 @@ export const AssistantScreen: React.FC = () => {
         <View style={styles.contextBanner}>
           <Ionicons name="information-circle-outline" size={14} color={Colors.primary} />
           <Text style={styles.contextText}>
-            Answering for <Text style={styles.contextBabyName}>{activeBaby.name}</Text>
+            {t('assistant.contextPrefix')}<Text style={styles.contextBabyName}>{activeBaby.name}</Text>
           </Text>
         </View>
       )}
@@ -188,17 +196,20 @@ export const AssistantScreen: React.FC = () => {
           {/* Suggested questions */}
           {showSuggestions && !isTyping && (
             <View style={styles.suggestions}>
-              <Text style={styles.suggestionsTitle}>Try asking:</Text>
+              <Text style={styles.suggestionsTitle}>{t('assistant.tryAsking')}</Text>
               <View style={styles.suggestionPills}>
-                {SUGGESTED_QUESTIONS.map(q => (
-                  <TouchableOpacity
-                    key={q}
-                    style={styles.suggestionPill}
-                    onPress={() => sendMessage(q)}
-                  >
-                    <Text style={styles.suggestionPillText}>{q}</Text>
-                  </TouchableOpacity>
-                ))}
+                {SUGGESTION_KEYS.map(k => {
+                  const q = t(`assistant.${k}`);
+                  return (
+                    <TouchableOpacity
+                      key={k}
+                      style={styles.suggestionPill}
+                      onPress={() => sendMessage(q)}
+                    >
+                      <Text style={styles.suggestionPillText}>{q}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -211,7 +222,7 @@ export const AssistantScreen: React.FC = () => {
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
-              placeholder="Ask about your baby..."
+              placeholder={t('assistant.inputPh')}
               placeholderTextColor={Colors.textLight}
               value={input}
               onChangeText={setInput}

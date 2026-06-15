@@ -18,6 +18,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Nav = NativeStackNavigationProp<any>;
 
@@ -31,6 +32,7 @@ type FieldErrors = {
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const { register, isLoading, error, clearError } = useAuthStore();
 
   const [form, setForm] = useState({
@@ -53,37 +55,37 @@ export const RegisterScreen: React.FC = () => {
     const errors: FieldErrors = {};
 
     if (!form.name.trim()) {
-      errors.name = 'Name is required';
+      errors.name = t('auth.nameRequired');
     } else if (form.name.trim().length < 3) {
-      errors.name = 'Name must be at least 3 characters';
+      errors.name = t('auth.nameMin3');
     } else if (form.name.trim().length > 20) {
-      errors.name = 'Name must be at most 20 characters';
+      errors.name = t('auth.nameMax20');
     }
 
     if (!form.email.trim()) {
-      errors.email = 'Email is required';
+      errors.email = t('auth.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = t('auth.emailInvalid');
     }
 
     if (!form.phone.trim()) {
-      errors.phone = 'Phone number is required';
+      errors.phone = t('auth.phoneRequired');
     } else if (!/^\+[0-9]{7,15}$/.test(form.phone.trim())) {
-      errors.phone = 'Phone must start with + and country code (e.g. +201011234567)';
+      errors.phone = t('auth.phoneInvalid');
     }
 
     if (!form.password) {
-      errors.password = 'Password is required';
+      errors.password = t('auth.passwordRequired');
     } else if (form.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+      errors.password = t('auth.passwordMin6');
     } else if (form.password.length > 20) {
-      errors.password = 'Password must be at most 20 characters';
+      errors.password = t('auth.passwordMax20');
     }
 
     if (!form.passwordConfirm) {
-      errors.passwordConfirm = 'Please confirm your password';
+      errors.passwordConfirm = t('auth.confirmRequired');
     } else if (form.password !== form.passwordConfirm) {
-      errors.passwordConfirm = 'Passwords do not match';
+      errors.passwordConfirm = t('auth.passwordsMismatch');
     }
 
     setFieldErrors(errors);
@@ -131,8 +133,8 @@ export const RegisterScreen: React.FC = () => {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Create account 🍼</Text>
-            <Text style={styles.subtitle}>Start monitoring your baby's health</Text>
+            <Text style={styles.title}>{t('auth.registerTitle')}</Text>
+            <Text style={styles.subtitle}>{t('auth.registerSubtitle')}</Text>
           </View>
 
           {/* Global API error */}
@@ -146,8 +148,8 @@ export const RegisterScreen: React.FC = () => {
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Full Name"
-              placeholder="Enter your full name"
+              label={t('auth.fullName')}
+              placeholder={t('auth.fullNamePh')}
               value={form.name}
               onChangeText={set('name')}
               autoCapitalize="words"
@@ -156,8 +158,8 @@ export const RegisterScreen: React.FC = () => {
             />
 
             <Input
-              label="Email Address"
-              placeholder="Enter your email"
+              label={t('auth.emailAddr')}
+              placeholder={t('auth.emailPh')}
               value={form.email}
               onChangeText={set('email')}
               keyboardType="email-address"
@@ -168,19 +170,19 @@ export const RegisterScreen: React.FC = () => {
             />
 
             <Input
-              label="Phone Number"
-              placeholder="+201011234567"
+              label={t('auth.phone')}
+              placeholder={t('auth.phonePh')}
               value={form.phone}
               onChangeText={set('phone')}
               keyboardType="phone-pad"
               leftIcon="call-outline"
               error={fieldErrors.phone}
-              hint="Include country code (e.g. +20 for Egypt)"
+              hint={t('auth.phoneHint')}
             />
 
             <Input
-              label="Password"
-              placeholder="Min 6 characters"
+              label={t('auth.password')}
+              placeholder={t('auth.passwordMinPh')}
               value={form.password}
               onChangeText={set('password')}
               isPassword
@@ -189,8 +191,8 @@ export const RegisterScreen: React.FC = () => {
             />
 
             <Input
-              label="Confirm Password"
-              placeholder="Re-enter your password"
+              label={t('auth.confirmPassword')}
+              placeholder={t('auth.confirmPasswordPh')}
               value={form.passwordConfirm}
               onChangeText={set('passwordConfirm')}
               isPassword
@@ -201,7 +203,7 @@ export const RegisterScreen: React.FC = () => {
 
           {/* Submit */}
           <Button
-            label="Create Account"
+            label={t('auth.createAccount')}
             onPress={handleRegister}
             loading={isLoading}
             size="lg"
@@ -209,9 +211,9 @@ export const RegisterScreen: React.FC = () => {
 
           {/* Login link */}
           <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Already have an account? </Text>
+            <Text style={styles.loginText}>{t('auth.haveAccount')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Sign In</Text>
+              <Text style={styles.loginLink}>{t('auth.signInLink')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

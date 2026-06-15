@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { babyService } from '../services/baby.service';
 import { Baby, AddBabyPayload } from '../types';
+import { MOCK_SENSOR_READING, MOCK_CRY_EVENTS } from '../constants/mockData';
 
 interface BabyState {
   babies:        Baby[];
@@ -108,7 +109,6 @@ export const useBabyStore = create<BabyState>((set, get) => ({
     try {
       // TODO: wire to real sensor endpoint when ready
       await new Promise(r => setTimeout(r, 500));
-      const { MOCK_SENSOR_READING, MOCK_CRY_EVENTS } = await import('../constants/mockData');
       set({ latestReading: MOCK_SENSOR_READING, latestCryEvent: MOCK_CRY_EVENTS[0], isFetchingLive: false });
     } catch {
       set({ isFetchingLive: false });

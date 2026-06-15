@@ -24,11 +24,13 @@ import { useAuthStore }              from '../../store/authStore';
 import { Input }                     from '../../components/ui/Input';
 import { Button }                    from '../../components/ui/Button';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Nav = NativeStackNavigationProp<any>;
 
 export const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const { forgotPassword, isLoading, error, clearError } = useAuthStore();
 
   const [identifier, setIdentifier] = useState('');
@@ -36,7 +38,7 @@ export const ForgotPasswordScreen: React.FC = () => {
 
   const validate = () => {
     if (!identifier.trim()) {
-      setFieldError('Email or phone number is required');
+      setFieldError(t('auth.identifierRequiredShort'));
       return false;
     }
     setFieldError(undefined);
@@ -75,9 +77,9 @@ export const ForgotPasswordScreen: React.FC = () => {
             <View style={styles.iconCircle}>
               <Ionicons name="lock-open-outline" size={36} color={Colors.primary} />
             </View>
-            <Text style={styles.title}>Forgot Password?</Text>
+            <Text style={styles.title}>{t('auth.forgotTitle')}</Text>
             <Text style={styles.subtitle}>
-              Enter your email or phone number and we'll send you a reset code.
+              {t('auth.forgotSubtitle')}
             </Text>
           </View>
 
@@ -89,8 +91,8 @@ export const ForgotPasswordScreen: React.FC = () => {
           )}
 
           <Input
-            label="Email or Phone"
-            placeholder="Enter your email or phone"
+            label={t('auth.emailOrPhone')}
+            placeholder={t('auth.emailOrPhonePh')}
             value={identifier}
             onChangeText={(v) => {
               setIdentifier(v);
@@ -104,7 +106,7 @@ export const ForgotPasswordScreen: React.FC = () => {
           />
 
           <Button
-            label="Send Reset Code"
+            label={t('auth.sendResetCode')}
             onPress={handleSend}
             loading={isLoading}
             size="lg"
@@ -115,7 +117,7 @@ export const ForgotPasswordScreen: React.FC = () => {
             onPress={() => navigation.navigate('Login')}
           >
             <Ionicons name="arrow-back" size={16} color={Colors.primary} />
-            <Text style={styles.backToLoginText}>Back to Sign In</Text>
+            <Text style={styles.backToLoginText}>{t('auth.backToSignIn')}</Text>
           </TouchableOpacity>
 
         </View>

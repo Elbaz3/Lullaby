@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────
 
 import * as SecureStore from 'expo-secure-store';
+import { getLocale } from '../store/localeStore';
 
 export const BASE_URL = 'http://63.179.148.169/api';
 
@@ -21,6 +22,7 @@ export const ENDPOINTS = {
   // Auth
   FORGOT_PASSWORD:        '/auth/forgot-password',
   VERIFY_FORGOT_PASSWORD: '/auth/verify-forgot-password',
+  CHANGE_PASSWORD:      '/users/change-password',
   BABIES:                 '/children',
   BABY_BY_ID:       (id: string) => `/children/${id}`,
   BABY_SENSORS:     (id: string) => `/babies/${id}/sensors`,
@@ -47,6 +49,11 @@ export const ENDPOINTS = {
 
   // Assistant
   ASSISTANT_CHAT: '/assistant/chat',
+
+  // Baby routine — growth & development (month = band lower bound, e.g. 19 for 19–24)
+  BABY_ROUTINE_PHYSICAL_GROWTH:   (month: number) => `/baby-routine/physical-growth/${month}`,
+  BABY_ROUTINE_MOTOR_DEVELOPMENT: (month: number) => `/baby-routine/motor-development/${month}`,
+  BABY_ROUTINE_FEEDING:           (month: number) => `/baby-routine/feeding/${month}`,
 } as const;
 
 // ── Storage Keys ──────────────────────────────
@@ -101,6 +108,7 @@ export async function apiRequest<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept':       'application/json',
+    lang:           getLocale(),
   };
 
   // Attach token if not a public endpoint

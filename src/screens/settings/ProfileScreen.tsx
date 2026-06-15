@@ -24,34 +24,20 @@ import { Input }                     from '../../components/ui/Input';
 import { DatePickerInput }           from '../../components/ui/DatePickerInput';
 import { Button }                    from '../../components/ui/Button';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Nav = NativeStackNavigationProp<any>;
 
-// ── DOB helpers ───────────────────────────────
-const isoToDMY = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    day:   String(d.getUTCDate()).padStart(2, '0'),
-    month: String(d.getUTCMonth() + 1).padStart(2, '0'),
-    year:  String(d.getUTCFullYear()),
-  };
-};
-
-const dmyToISO = (day: string, month: string, year: string): string | null => {
-  const d = parseInt(day), m = parseInt(month), y = parseInt(year);
-  if (!d || !m || !y || y < 1900 || y > new Date().getFullYear()) return null;
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-};
-
-const formatDOB = (iso?: string | null) => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  });
-};
-
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t, locale } = useTranslation();
+  const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-GB';
+  const formatDOB = (iso?: string | null) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString(dateLocale, {
+      day: '2-digit', month: 'long', year: 'numeric',
+    });
+  };
   const { user, fetchProfile, updateProfile, isLoading, error, clearError } = useAuthStore();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -98,7 +84,7 @@ export const ProfileScreen: React.FC = () => {
   // ── Validate ─────────────────────────────
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!name.trim() || name.trim().length < 2) e.name = 'Name must be at least 2 characters';
+    if (!name.trim() || name.trim().length < 2) e.name = t('profile.nameShort');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -144,7 +130,7 @@ export const ProfileScreen: React.FC = () => {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <Text style={styles.loadingText}>{t('profile.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -159,7 +145,7 @@ export const ProfileScreen: React.FC = () => {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <Text style={styles.headerTitle}>{t('profile.title')}</Text>
           <TouchableOpacity
             style={[styles.editToggle, isEditing && styles.editToggleActive]}
             onPress={() => isEditing ? cancelEdit() : setIsEditing(true)}
@@ -213,10 +199,10 @@ export const ProfileScreen: React.FC = () => {
             )}
 
             {isEditing && isNewPhoto && (
-              <Text style={styles.photoHint}>New photo selected — will be uploaded on save</Text>
+              <Text style={styles.photoHint}>{t('profile.photoNewHint')}</Text>
             )}
             {isEditing && photo && !isNewPhoto && (
-              <Text style={styles.photoHint}>Tap avatar to change photo</Text>
+              <Text style={styles.photoHint}>{t('profile.photoTapHint')}</Text>
             )}
           </View>
 
@@ -231,7 +217,7 @@ export const ProfileScreen: React.FC = () => {
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Full Name"
+              label={t('profile.fullName')}
               value={name}
               onChangeText={(v) => { setName(v); clearError(); }}
               editable={isEditing}
@@ -241,27 +227,27 @@ export const ProfileScreen: React.FC = () => {
             />
 
             <Input
-              label="Email Address"
+              label={t('profile.email')}
               value={user?.email ?? ''}
               editable={false}
               leftIcon="mail-outline"
               style={styles.readOnly}
-              hint="Email cannot be changed"
+              hint={t('profile.emailHint')}
             />
 
             <Input
-              label="Phone Number"
+              label={t('profile.phone')}
               value={user?.phone ?? ''}
               editable={false}
               leftIcon="call-outline"
               style={styles.readOnly}
-              hint="Phone cannot be changed"
+              hint={t('profile.phoneHint')}
             />
 
             {/* Date of Birth */}
             {isEditing ? (
               <DatePickerInput
-                label="Date of Birth (optional)"
+                label={t('profile.dobOptional')}
                 value={dobISO}
                 onChange={setDobISO}
                 maxDate={new Date()}
@@ -273,7 +259,7 @@ export const ProfileScreen: React.FC = () => {
                 <View style={styles.infoRowLeft}>
                   <Ionicons name="calendar-outline" size={18} color={Colors.textMuted} />
                   <View>
-                    <Text style={styles.infoRowLabel}>Date of Birth</Text>
+                    <Text style={styles.infoRowLabel}>{t('profile.dob')}</Text>
                     <Text style={styles.infoRowValue}>{formatDOB(user?.dateOfBirth)}</Text>
                   </View>
                 </View>
@@ -284,7 +270,7 @@ export const ProfileScreen: React.FC = () => {
           {/* Save button */}
           {isEditing && (
             <Button
-              label="Save Changes"
+              label={t('profile.saveChanges')}
               onPress={handleSave}
               loading={saving || isLoading}
               size="lg"
@@ -302,29 +288,29 @@ export const ProfileScreen: React.FC = () => {
                   <Ionicons name="lock-closed-outline" size={18} color={Colors.primary} />
                 </View>
                 <View style={styles.actionInfo}>
-                  <Text style={styles.actionTitle}>Change Password</Text>
-                  <Text style={styles.actionSub}>Update your account password</Text>
+                  <Text style={styles.actionTitle}>{t('profile.changePassword')}</Text>
+                  <Text style={styles.actionSub}>{t('profile.changePasswordSub')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
               </TouchableOpacity>
 
               {/* Account info card */}
               <View style={[styles.infoCard, Shadows.sm]}>
-                <Text style={styles.infoCardTitle}>Account Info</Text>
+                <Text style={styles.infoCardTitle}>{t('profile.accountInfo')}</Text>
                 <View style={styles.infoCardRow}>
-                  <Text style={styles.infoCardLabel}>Member Since</Text>
+                  <Text style={styles.infoCardLabel}>{t('profile.memberSince')}</Text>
                   <Text style={styles.infoCardValue}>
                     {user?.createdAt
-                      ? new Date(user.createdAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+                      ? new Date(user.createdAt).toLocaleDateString(dateLocale, { month: 'long', year: 'numeric' })
                       : '—'}
                   </Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.infoCardRow}>
-                  <Text style={styles.infoCardLabel}>Account Status</Text>
+                  <Text style={styles.infoCardLabel}>{t('profile.accountStatus')}</Text>
                   <View style={styles.activeBadge}>
                     <View style={styles.activeDot} />
-                    <Text style={styles.activeText}>Active</Text>
+                    <Text style={styles.activeText}>{t('profile.active')}</Text>
                   </View>
                 </View>
               </View>

@@ -17,35 +17,15 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useBabyStore } from '../../store/babyStore';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { Baby } from '../../types';
+import { useTranslation } from '../../i18n/useTranslation';
+import { formatListBabyAge } from '../../utils/babyAge';
 
 const { width } = Dimensions.get('window');
 type Nav = NativeStackNavigationProp<any>;
 
-// ── Age calculation ───────────────────────────
-const calcAge = (dob: string): string => {
-  const birth = new Date(dob);
-  if (isNaN(birth.getTime())) return '';
-  const now    = new Date();
-  const days   = Math.floor((now.getTime() - birth.getTime()) / 86400000);
-  if (days < 0)  return 'Future date';
-  if (days === 0) return 'Newborn';
-  const months = Math.floor(days / 30.44);
-  const years  = Math.floor(days / 365.25);
-  if (days < 7)   return `${days} day${days > 1 ? 's' : ''}`;
-  if (days < 30)  return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''}`;
-  if (years < 1) {
-    const remWeeks = Math.floor((days - months * 30.44) / 7);
-    return remWeeks > 0
-      ? `${months}Months,${remWeeks}Weeks`
-      : `${months}Month${months > 1 ? 's' : ''}`;
-  }
-  const remMonths = months - years * 12;
-  return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}yr`;
-};
-
 // ── Baby Card ─────────────────────────────────
-const BabyCard: React.FC<{ baby: Baby; onPress: () => void }> = ({ baby, onPress }) => {
-  const age = calcAge(baby.dateBirth);
+const BabyCard: React.FC<{ baby: Baby; onPress: () => void; t: (k: string, v?: Record<string, string | number>) => string }> = ({ baby, onPress, t }) => {
+  const age = formatListBabyAge(baby.dateBirth, t);
 
   return (
     <View style={[styles.card, Shadows.md]}>
@@ -72,7 +52,7 @@ const BabyCard: React.FC<{ baby: Baby; onPress: () => void }> = ({ baby, onPress
         onPress={onPress}
         activeOpacity={0.85}
       >
-        <Text style={styles.viewProfileText}>View Profile</Text>
+        <Text style={styles.viewProfileText}>{t('babies.viewProfile')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -81,6 +61,7 @@ const BabyCard: React.FC<{ baby: Baby; onPress: () => void }> = ({ baby, onPress
 // ── Main Screen ───────────────────────────────
 export const BabiesScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const { babies, fetchBabies } = useBabyStore();
 
   useEffect(() => { fetchBabies(); }, []);
@@ -89,7 +70,7 @@ export const BabiesScreen: React.FC = () => {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Babies</Text>
+        <Text style={styles.headerTitle}>{t('babies.myBabies')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -99,6 +80,7 @@ export const BabiesScreen: React.FC = () => {
           <BabyCard
             key={baby.id}
             baby={baby}
+            t={t}
             onPress={() => navigation.navigate('BabyDetail', { babyId: baby.id })}
           />
         ))}
@@ -110,12 +92,12 @@ export const BabiesScreen: React.FC = () => {
               <Ionicons name="add" size={22} color={Colors.textMuted} />
             </View>
             <View>
-              <Text style={styles.addMoreTitle}>Add Another Baby</Text>
-              <Text style={styles.addMoreSub}>Multiple children support</Text>
+              <Text style={styles.addMoreTitle}>{t('babies.addAnother')}</Text>
+              <Text style={styles.addMoreSub}>{t('babies.addAnotherSub')}</Text>
             </View>
           </View>
           <View style={styles.comingSoonTag}>
-            <Text style={styles.comingSoonText}>Coming Soon</Text>
+            <Text style={styles.comingSoonText}>{t('common.comingSoon')}</Text>
           </View>
         </TouchableOpacity>
 

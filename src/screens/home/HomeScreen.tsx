@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,31 +20,12 @@ import { CryReasonCard } from '../../components/CryReasonCard';
 import { BabyAvatar } from '../../components/BabyAvatar';
 import { Card, SectionHeader, Badge } from '../../components/ui/Card';
 import { cryService } from '../../services/cry.service';
-
-const { width } = Dimensions.get('window');
-
-const calcBabyAge = (dob: string): string => {
-  const birth = new Date(dob);
-  if (isNaN(birth.getTime())) return '';
-  const days   = Math.floor((Date.now() - birth.getTime()) / 86400000);
-  if (days < 0)  return 'Future date';
-  if (days === 0) return 'Newborn';
-  const months = Math.floor(days / 30.44);
-  const years  = Math.floor(days / 365.25);
-  if (days < 7)   return `${days}d`;
-  if (days < 30)  return `${Math.floor(days / 7)}Weeks`;
-  if (years < 1) {
-    const remWeeks = Math.floor((days - months * 30.44) / 7);
-    return remWeeks > 0
-      ? `${months}Months,${remWeeks}Weeks`
-      : `${months}Months`;
-  }
-  const remMonths = months - years * 12;
-  return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}yr`;
-};
+import { useTranslation } from '../../i18n/useTranslation';
+import { formatBabyAge } from '../../utils/babyAge';
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t, isRTL } = useTranslation();
   const { user } = useAuthStore();
   const {
     babies,
@@ -85,18 +65,19 @@ export const HomeScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  const firstName = (user?.name ?? user?.fullName ?? 'Parent').split(' ')[0];
+  const firstName = (user?.name ?? user?.fullName ?? t('home.parent')).split(' ')[0];
   const hour = new Date().getHours();
   const greeting =
-    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    hour < 12 ? t('home.goodMorning') : hour < 17 ? t('home.goodAfternoon') : t('home.goodEvening');
 
   const aqiStatus = latestReading?.airQuality.status ?? 'good';
-  const aqiColor = {
+  const aqiPalette: Record<string, string> = {
     good: Colors.success,
     moderate: Colors.warning,
     poor: Colors.danger,
     hazardous: Colors.danger,
-  }[aqiStatus];
+  };
+  const aqiColor = aqiPalette[aqiStatus] ?? Colors.success;
 
   const latestCryMeta = latestCryEvent
     ? cryService.getCryReasonMeta(latestCryEvent.reason)
@@ -114,11 +95,14 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{greeting} 👋</Text>
-            <Text style={styles.name}>HI,{firstName}</Text>
+            <Text style={styles.name}>
+              {t('home.hi')}
+              {firstName}
+            </Text>
           </View>
           <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("Notifications")}>
             <Ionicons name="notifications-outline" size={24} color={Colors.textDark} />
-            <View style={styles.notifBadge} />
+            <View style={[styles.notifBadge, isRTL ? styles.notifBadgeRTL : styles.notifBadgeLTR]} />
           </TouchableOpacity>
         </View>
 
@@ -139,7 +123,7 @@ export const HomeScreen: React.FC = () => {
               {/* Info */}
               <View style={styles.babyCardInfo}>
                 <Text style={styles.babyCardName}>{activeBaby.name}</Text>
-                <Text style={styles.babyCardAge}>{calcBabyAge(activeBaby.dateBirth)}</Text>
+                <Text style={styles.babyCardAge}>{formatBabyAge(activeBaby.dateBirth, t)}</Text>
               </View>
             </View>
             {/* View Profile */}
@@ -148,20 +132,38 @@ export const HomeScreen: React.FC = () => {
               onPress={() => navigation.navigate('Babies')}
               activeOpacity={0.85}
             >
-              <Text style={styles.viewProfileText}>View Profile</Text>
+              <Text style={styles.viewProfileText}>{t('home.viewProfile')}</Text>
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Baby growth & development */}
+        <TouchableOpacity
+          style={[styles.growthCard, Shadows.md]}
+          onPress={() => navigation.navigate('BabyGrowthMenu')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.growthIconWrap}>
+            <Text style={styles.growthEmoji}>📈</Text>
+          </View>
+          <View style={styles.growthText}>
+            <Text style={styles.growthTitle}>{t('home.growthTitle')}</Text>
+            <Text style={styles.growthSub}>{t('home.growthSub')}</Text>
+          </View>
+          <View style={isRTL ? styles.chevronFlip : undefined}>
+            <Ionicons name="chevron-forward" size={22} color={Colors.textMuted} />
+          </View>
+        </TouchableOpacity>
 
         {/* Status Banner */}
         {activeBaby && (
           <View style={[styles.statusBanner, Shadows.md]}>
             <View style={styles.statusLeft}>
               <View style={styles.liveDot} />
-              <Text style={styles.statusLabel}>Live Monitoring</Text>
+              <Text style={styles.statusLabel}>{t('home.liveMonitoring')}</Text>
             </View>
             <Badge
-              label={activeBaby.deviceId ? '● Connected' : '○ No Device'}
+              label={activeBaby.deviceId ? t('home.badgeConnected') : t('home.badgeNoDevice')}
               variant={activeBaby.deviceId ? 'success' : 'neutral'}
             />
           </View>
@@ -169,11 +171,16 @@ export const HomeScreen: React.FC = () => {
 
         {/* Cry Alert */}
         {latestCryEvent && latestCryMeta && (
-          <View style={[styles.cryAlert, { borderLeftColor: latestCryMeta.color }]}>
+          <View
+            style={[
+              styles.cryAlert,
+              { borderStartWidth: 4, borderStartColor: latestCryMeta.color },
+            ]}
+          >
             <Text style={styles.cryAlertEmoji}>{latestCryMeta.emoji}</Text>
             <View style={styles.cryAlertText}>
               <Text style={styles.cryAlertTitle}>
-                Baby might be {latestCryMeta.label.toLowerCase()}
+                {t('home.cryMightBe', { reason: latestCryMeta.label.toLowerCase() })}
               </Text>
               <Text style={styles.cryAlertSub}>{latestCryMeta.suggestion}</Text>
             </View>
@@ -188,59 +195,59 @@ export const HomeScreen: React.FC = () => {
         {/* Sensor Cards Grid */}
         {latestReading && (
           <>
-            <SectionHeader title="Vitals" action="History" />
+            <SectionHeader title={t('home.vitals')} action={t('home.history')} />
             <View style={styles.sensorGrid}>
               <SensorCard
-                label="Body Temp"
+                label={t('home.bodyTemp')}
                 value={latestReading.temperature.toFixed(1)}
                 unit="°C"
                 icon="thermometer-outline"
                 bgColor={Colors.tempCard}
                 iconColor="#FF7043"
                 status={latestReading.temperature > 37.5 ? 'warning' : 'normal'}
-                subtitle={latestReading.temperature > 37.5 ? 'Slightly elevated' : 'Normal range'}
+                subtitle={latestReading.temperature > 37.5 ? t('home.slightlyElevated') : t('home.normalRange')}
               />
               <SensorCard
-                label="Heart Rate"
+                label={t('home.heartRate')}
                 value={latestReading.heartRate}
                 unit="bpm"
                 icon="heart-outline"
                 bgColor={Colors.heartCard}
                 iconColor="#E91E63"
                 status={latestReading.heartRate > 160 ? 'warning' : 'normal'}
-                subtitle={`${latestReading.heartRate > 160 ? 'High' : 'Normal'}`}
+                subtitle={latestReading.heartRate > 160 ? t('home.high') : t('home.normal')}
               />
             </View>
             <View style={styles.sensorGrid}>
               <SensorCard
-                label="Breathing"
+                label={t('home.breathing')}
                 value={latestReading.breathingRate}
                 unit="/min"
                 icon="water-outline"
                 bgColor={Colors.breathCard}
                 iconColor="#4CAF50"
                 status="normal"
-                subtitle="Steady rhythm"
+                subtitle={t('home.steadyRhythm')}
               />
               <SensorCard
-                label="SpO₂"
+                label={t('home.spo2')}
                 value={latestReading.oxygenLevel}
                 unit="%"
                 icon="pulse-outline"
                 bgColor={Colors.airCard}
                 iconColor="#03A9F4"
                 status={latestReading.oxygenLevel < 95 ? 'warning' : 'normal'}
-                subtitle={latestReading.oxygenLevel >= 95 ? 'Optimal' : 'Check needed'}
+                subtitle={latestReading.oxygenLevel >= 95 ? t('home.optimal') : t('home.checkNeeded')}
               />
             </View>
 
             {/* Air Quality */}
-            <SectionHeader title="Air Quality" />
+            <SectionHeader title={t('home.airQuality')} />
             <Card style={styles.airCard}>
               <View style={styles.airTop}>
                 <View>
                   <Text style={styles.aqiValue}>{latestReading.airQuality.aqi}</Text>
-                  <Text style={styles.aqiLabel}>Air Quality Index</Text>
+                  <Text style={styles.aqiLabel}>{t('home.airQualityIndex')}</Text>
                 </View>
                 <Badge
                   label={aqiStatus.toUpperCase()}
@@ -248,9 +255,9 @@ export const HomeScreen: React.FC = () => {
                 />
               </View>
               <View style={styles.airRow}>
-                <AirMetric icon="water-outline" label="Humidity" value={`${latestReading.airQuality.humidity}%`} />
-                <AirMetric icon="thermometer-outline" label="Room Temp" value={`${latestReading.airQuality.temperature}°C`} />
-                <AirMetric icon="cloud-outline" label="CO₂" value={`${latestReading.airQuality.co2}ppm`} />
+                <AirMetric icon="water-outline" label={t('home.humidity')} value={`${latestReading.airQuality.humidity}%`} />
+                <AirMetric icon="thermometer-outline" label={t('home.roomTemp')} value={`${latestReading.airQuality.temperature}°C`} />
+                <AirMetric icon="cloud-outline" label={t('home.co2')} value={`${latestReading.airQuality.co2}ppm`} />
               </View>
             </Card>
           </>
@@ -260,10 +267,8 @@ export const HomeScreen: React.FC = () => {
         {babies.length === 0 && !isFetchingLive && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>👶</Text>
-            <Text style={styles.emptyTitle}>No baby profile yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Add your baby's profile to start monitoring
-            </Text>
+            <Text style={styles.emptyTitle}>{t('home.noBabyTitle')}</Text>
+            <Text style={styles.emptySubtitle}>{t('home.noBabySubtitle')}</Text>
           </View>
         )}
 
@@ -317,7 +322,6 @@ const styles = StyleSheet.create({
   notifBadge: {
     position: 'absolute',
     top: 10,
-    right: 10,
     width: 8,
     height: 8,
     borderRadius: 4,
@@ -325,6 +329,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.white,
   },
+  notifBadgeLTR: { right: 10 },
+  notifBadgeRTL: { left: 10 },
   babySelector: {
     gap: Spacing.md,
     paddingBottom: Spacing.xs,
@@ -376,9 +382,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     padding: Spacing.lg,
     gap: Spacing.md,
-    borderLeftWidth: 4,
     ...Shadows.sm,
   },
+  chevronFlip: { transform: [{ scaleX: -1 }] },
   cryAlertEmoji: { fontSize: 32 },
   cryAlertText: { flex: 1, gap: 2 },
   cryAlertTitle: {
@@ -473,4 +479,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
   },
   viewProfileText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.white },
+
+  growthCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: Colors.primarySoft,
+  },
+  growthIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  growthEmoji: { fontSize: 24 },
+  growthText: { flex: 1, gap: 2 },
+  growthTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.textDark },
+  growthSub: { fontSize: FontSize.sm, color: Colors.textMuted },
 });

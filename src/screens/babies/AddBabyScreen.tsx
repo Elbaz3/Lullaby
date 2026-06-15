@@ -27,32 +27,17 @@ import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../co
 import { Button }                    from '../../components/ui/Button';
 import { Input }                     from '../../components/ui/Input';
 import { DatePickerInput }           from '../../components/ui/DatePickerInput';
+import { useTranslation }            from '../../i18n/useTranslation';
 
 type Nav    = NativeStackNavigationProp<any>;
 type Params = { AddBaby?: { babyId?: string } };
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-// ── Format ISO date → DD/MM/YYYY ─────────────
-const isoToDMY = (iso: string): { d: string; m: string; y: string } => {
-  const date = new Date(iso);
-  return {
-    d: String(date.getUTCDate()).padStart(2, '0'),
-    m: String(date.getUTCMonth() + 1).padStart(2, '0'),
-    y: String(date.getUTCFullYear()),
-  };
-};
-
-// ── Format DD/MM/YYYY → YYYY-MM-DD ───────────
-const dmyToISO = (d: string, m: string, y: string): string | null => {
-  const day = parseInt(d), month = parseInt(m), year = parseInt(y);
-  if (!day || !month || !year || year < 2000) return null;
-  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-};
-
 export const AddBabyScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route      = useRoute<RouteProp<Params, 'AddBaby'>>();
+  const { t } = useTranslation();
   const { babies, activeBaby, addBaby, updateBaby, isLoading } = useBabyStore();
 
   // Determine mode
@@ -88,7 +73,7 @@ export const AddBabyScreen: React.FC = () => {
   // ── Photo picker ─────────────────────────
   const pickPhoto = async () => {
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!granted) { Alert.alert('Permission needed', 'Allow photo access to add a photo.'); return; }
+    if (!granted) { Alert.alert(t('addBaby.permissionTitle'), t('addBaby.permissionBody')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true, aspect: [1, 1], quality: 0.8,
@@ -101,17 +86,20 @@ export const AddBabyScreen: React.FC = () => {
   // ── Validation ───────────────────────────
   const validateStep1 = () => {
     const e: Record<string, string> = {};
-    if (!name.trim() || name.trim().length < 3) e.name = 'Name must be at least 3 characters';
-    if (name.trim().length > 20)                e.name = 'Name must be 20 characters or less';
-    if (!dobISO) e.dob = 'Please select a date of birth';
+    if (!name.trim() || name.trim().length < 3) e.name = t('addBaby.nameShort');
+    if (name.trim().length > 20)                e.name = t('addBaby.nameLong');
+    if (!dobISO) e.dob = t('addBaby.dobRequired');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   // ── Submit ───────────────────────────────
   const handleSave = async () => {
-    const dateBirth = dmyToISO(day, month, year);
-    if (!dateBirth) { setErrors({ day: 'Invalid date' }); return; }
+    if (!dobISO) {
+      setErrors({ dob: t('addBaby.dobRequired') });
+      return;
+    }
+    const dateBirth = dobISO.includes('T') ? dobISO.split('T')[0] : dobISO;
 
     const payload = {
       name:      name.trim(),
@@ -128,17 +116,17 @@ export const AddBabyScreen: React.FC = () => {
     try {
       if (isEdit && editBabyId) {
         await updateBaby(editBabyId, payload, avatarUri);
-        Alert.alert('Updated! ✅', `${name}'s profile has been updated.`, [
-          { text: 'Done', onPress: () => navigation.goBack() },
+        Alert.alert(t('addBaby.updatedTitle'), t('addBaby.updatedMsg', { name: name.trim() }), [
+          { text: t('addBaby.done'), onPress: () => navigation.goBack() },
         ]);
       } else {
         await addBaby(payload, avatarUri);
-        Alert.alert('Baby Added! 🎉', `${name} has been added to your profile.`, [
-          { text: 'Great!', onPress: () => navigation.goBack() },
+        Alert.alert(t('addBaby.addedTitle'), t('addBaby.addedMsg', { name: name.trim() }), [
+          { text: t('addBaby.great'), onPress: () => navigation.goBack() },
         ]);
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Something went wrong. Please try again.');
+      Alert.alert(t('addBaby.errorTitle'), err.message ?? t('addBaby.errorGeneric'));
     }
   };
 
@@ -156,7 +144,7 @@ export const AddBabyScreen: React.FC = () => {
           }}>
             <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{isEdit ? 'Edit Baby Profile' : 'Add New Baby'}</Text>
+          <Text style={styles.headerTitle}>{isEdit ? t('addBaby.editTitle') : t('addBaby.addTitle')}</Text>
           <View style={styles.stepIndicator}>
             <Text style={styles.stepText}>{step}/2</Text>
           </View>
@@ -179,7 +167,7 @@ export const AddBabyScreen: React.FC = () => {
                   <View style={styles.photoPlaceholder}>
                     <Ionicons name="camera-outline" size={28} color={Colors.primary} />
                     <Text style={styles.photoLabel}>
-                      {isEdit ? 'Change Photo' : 'Add Photo'}
+                      {isEdit ? t('addBaby.changePhoto') : t('addBaby.addPhoto')}
                     </Text>
                   </View>
                 )}
@@ -188,22 +176,22 @@ export const AddBabyScreen: React.FC = () => {
                 </View>
               </TouchableOpacity>
               {isEdit && photo && !isNewPhoto && (
-                <Text style={styles.photoHint}>Tap to change · current photo from server</Text>
+                <Text style={styles.photoHint}>{t('addBaby.photoHintEdit')}</Text>
               )}
 
               {/* Name */}
               <Input
-                label="Baby's Name"
+                label={t('addBaby.babyName')}
                 value={name}
                 onChangeText={setName}
-                placeholder="Enter baby's name"
+                placeholder={t('addBaby.babyNamePh')}
                 error={errors.name}
                 leftIcon="person-outline"
               />
 
               {/* Gender */}
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Gender</Text>
+                <Text style={styles.fieldLabel}>{t('addBaby.gender')}</Text>
                 <View style={styles.genderRow}>
                   {(['male', 'female'] as const).map(g => (
                     <TouchableOpacity
@@ -215,7 +203,7 @@ export const AddBabyScreen: React.FC = () => {
                     >
                       <Text style={styles.genderEmoji}>{g === 'male' ? '👦' : '👧'}</Text>
                       <Text style={[styles.genderLabel, gender === g && styles.genderLabelActive]}>
-                        {g === 'male' ? 'Male' : 'Female'}
+                        {g === 'male' ? t('addBaby.male') : t('addBaby.female')}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -224,16 +212,16 @@ export const AddBabyScreen: React.FC = () => {
 
               {/* Date of Birth */}
               <DatePickerInput
-                label="Date of Birth"
+                label={t('addBaby.dob')}
                 value={dobISO}
                 onChange={setDobISO}
                 maxDate={new Date()}
                 minDate={new Date(2000, 0, 1)}
-                placeholder="Select baby's date of birth"
+                placeholder={t('addBaby.dobPh')}
                 error={errors.dob}
               />
 
-              <Button label="Next →" onPress={() => { if (validateStep1()) setStep(2); }} size="lg" />
+              <Button label={t('addBaby.next')} onPress={() => { if (validateStep1()) setStep(2); }} size="lg" />
             </>
           ) : (
             <>
@@ -241,18 +229,18 @@ export const AddBabyScreen: React.FC = () => {
               <View style={styles.rowFields}>
                 <View style={{ flex: 1 }}>
                   <Input
-                    label="Weight (kg)"
+                    label={t('addBaby.weightKg')}
                     value={weight} onChangeText={setWeight}
-                    placeholder="e.g. 3.5"
+                    placeholder={t('addBaby.weightPh')}
                     keyboardType="decimal-pad"
                     leftIcon="scale-outline"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Input
-                    label="Height (cm)"
+                    label={t('addBaby.heightCm')}
                     value={height} onChangeText={setHeight}
-                    placeholder="e.g. 60"
+                    placeholder={t('addBaby.heightPh')}
                     keyboardType="decimal-pad"
                     leftIcon="resize-outline"
                   />
@@ -261,7 +249,7 @@ export const AddBabyScreen: React.FC = () => {
 
               {/* Blood Type */}
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Blood Type <Text style={styles.optional}>(optional)</Text></Text>
+                <Text style={styles.fieldLabel}>{t('addBaby.bloodType')} <Text style={styles.optional}>{t('addBaby.optional')}</Text></Text>
                 <View style={styles.bloodGrid}>
                   {BLOOD_TYPES.map(bt => (
                     <TouchableOpacity
@@ -278,13 +266,13 @@ export const AddBabyScreen: React.FC = () => {
               </View>
 
               <Button
-                label={isEdit ? 'Save Changes' : 'Save Baby Profile'}
+                label={isEdit ? t('addBaby.saveChanges') : t('addBaby.saveProfile')}
                 onPress={handleSave}
                 loading={isLoading}
                 size="lg"
               />
               <TouchableOpacity style={styles.skipBtn} onPress={() => navigation.goBack()}>
-                <Text style={styles.skipText}>Cancel</Text>
+                <Text style={styles.skipText}>{t('addBaby.cancel')}</Text>
               </TouchableOpacity>
             </>
           )}

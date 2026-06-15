@@ -18,11 +18,13 @@ import { useAuthStore } from '../../store/authStore';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Nav = NativeStackNavigationProp<any>;
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const { login, isLoading, error, clearError } = useAuthStore();
 
   const [identifier, setIdentifier] = useState(''); // email or phone
@@ -36,12 +38,12 @@ export const LoginScreen: React.FC = () => {
   const validate = (): boolean => {
     const errors: typeof fieldErrors = {};
     if (!identifier.trim()) {
-      errors.identifier = 'Email or phone number is required';
+      errors.identifier = t('auth.identifierRequired');
     }
     if (!password) {
-      errors.password = 'Password is required';
+      errors.password = t('auth.passwordRequired');
     } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+      errors.password = t('auth.passwordMin6');
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -82,8 +84,8 @@ export const LoginScreen: React.FC = () => {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome back 👋</Text>
-            <Text style={styles.subtitle}>Sign in to your account</Text>
+            <Text style={styles.title}>{t('auth.loginTitle')}</Text>
+            <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
           </View>
 
           {/* Global API error */}
@@ -97,8 +99,8 @@ export const LoginScreen: React.FC = () => {
           {/* Fields */}
           <View style={styles.form}>
             <Input
-              label="Email or Phone"
-              placeholder="Enter your email or phone number"
+              label={t('auth.emailOrPhone')}
+              placeholder={t('auth.emailOrPhonePh')}
               value={identifier}
               onChangeText={(v) => { setIdentifier(v); setFieldErrors(p => ({ ...p, identifier: undefined })); }}
               keyboardType="email-address"
@@ -109,8 +111,8 @@ export const LoginScreen: React.FC = () => {
             />
 
             <Input
-              label="Password"
-              placeholder="Enter your password"
+              label={t('auth.password')}
+              placeholder={t('auth.passwordPh')}
               value={password}
               onChangeText={(v) => { setPassword(v); setFieldErrors(p => ({ ...p, password: undefined })); }}
               isPassword
@@ -123,13 +125,13 @@ export const LoginScreen: React.FC = () => {
               style={styles.forgotRow}
               onPress={handleForgotPassword}
             >
-              <Text style={styles.forgotText}>Forgot password?</Text>
+              <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Submit */}
           <Button
-            label="Sign In"
+            label={t('auth.signIn')}
             onPress={handleLogin}
             loading={isLoading}
             size="lg"
@@ -137,9 +139,9 @@ export const LoginScreen: React.FC = () => {
 
           {/* Register link */}
           <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Don't have an account? </Text>
+            <Text style={styles.registerText}>{t('auth.noAccount')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLink}>Sign Up</Text>
+              <Text style={styles.registerLink}>{t('auth.signUp')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

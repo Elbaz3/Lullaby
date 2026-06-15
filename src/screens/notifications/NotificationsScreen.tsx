@@ -9,6 +9,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MOCK_NOTIFICATIONS } from '../../constants/mockData';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
 import { formatDistanceToNow } from 'date-fns';
+import { enUS, ar as arLocale } from 'date-fns/locale';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Nav = NativeStackNavigationProp<any>;
 type NotifType = 'cry' | 'sensor' | 'report' | 'vaccination' | 'system';
@@ -54,6 +56,8 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
 
 export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t, locale } = useTranslation();
+  const dfLocale = locale === 'ar' ? arLocale : enUS;
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
@@ -67,9 +71,9 @@ export const NotificationsScreen: React.FC = () => {
   const todayStr = now.toDateString();
   const yesterdayStr = new Date(now.getTime() - 86400000).toDateString();
   const groups = [
-    { label: 'Today',     items: filtered.filter(n => new Date(n.timestamp).toDateString() === todayStr) },
-    { label: 'Yesterday', items: filtered.filter(n => new Date(n.timestamp).toDateString() === yesterdayStr) },
-    { label: 'Older',     items: filtered.filter(n => { const d = new Date(n.timestamp).toDateString(); return d !== todayStr && d !== yesterdayStr; }) },
+    { key: 'today', label: t('notifications.today'), items: filtered.filter(n => new Date(n.timestamp).toDateString() === todayStr) },
+    { key: 'yesterday', label: t('notifications.yesterday'), items: filtered.filter(n => new Date(n.timestamp).toDateString() === yesterdayStr) },
+    { key: 'older', label: t('notifications.older'), items: filtered.filter(n => { const d = new Date(n.timestamp).toDateString(); return d !== todayStr && d !== yesterdayStr; }) },
   ].filter(g => g.items.length > 0);
 
   return (
@@ -78,10 +82,10 @@ export const NotificationsScreen: React.FC = () => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllRead}>
-            <Text style={styles.markAllText}>Mark all read</Text>
+            <Text style={styles.markAllText}>{t('notifications.markAllRead')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -90,7 +94,7 @@ export const NotificationsScreen: React.FC = () => {
         {(['all', 'unread'] as const).map(f => (
           <TouchableOpacity key={f} style={[styles.filterPill, filter === f && styles.filterPillActive]} onPress={() => setFilter(f)}>
             <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-              {f === 'all' ? 'All' : `Unread (${unreadCount})`}
+              {f === 'all' ? t('notifications.all') : t('notifications.unread', { n: unreadCount })}
             </Text>
           </TouchableOpacity>
         ))}
@@ -100,12 +104,14 @@ export const NotificationsScreen: React.FC = () => {
         {filtered.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🔔</Text>
-            <Text style={styles.emptyTitle}>All caught up!</Text>
-            <Text style={styles.emptySubtitle}>No {filter === 'unread' ? 'unread ' : ''}notifications</Text>
+            <Text style={styles.emptyTitle}>{t('notifications.emptyTitle')}</Text>
+            <Text style={styles.emptySubtitle}>
+              {t('notifications.emptySub', { filter: filter === 'unread' ? t('notifications.unreadWord') : '' })}
+            </Text>
           </View>
         ) : (
           groups.map(group => (
-            <View key={group.label} style={styles.group}>
+            <View key={group.key} style={styles.group}>
               <Text style={styles.groupLabel}>{group.label}</Text>
               {group.items.map(notif => {
                 const cfg = NOTIF_CONFIG[notif.type] ?? NOTIF_CONFIG.system;
@@ -117,7 +123,7 @@ export const NotificationsScreen: React.FC = () => {
                     <View style={styles.notifContent}>
                       <Text style={styles.notifTitle}>{notif.title}</Text>
                       <Text style={styles.notifBody}>{notif.body}</Text>
-                      <Text style={styles.notifTime}>{formatDistanceToNow(new Date(notif.timestamp), { addSuffix: true })}</Text>
+                      <Text style={styles.notifTime}>{formatDistanceToNow(new Date(notif.timestamp), { addSuffix: true, locale: dfLocale })}</Text>
                     </View>
                     <View style={styles.notifRight}>
                       {!notif.read && <View style={styles.unreadDot} />}

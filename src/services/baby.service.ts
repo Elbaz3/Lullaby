@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────
 
 import { apiRequest, tokenStorage, BASE_URL, ENDPOINTS } from './api';
+import { getLocale } from '../store/localeStore';
 import { MOCK_BABIES, mockDelay }  from '../constants/mockData';
 import { Baby, AddBabyPayload }    from '../types';
 
@@ -156,7 +157,7 @@ export const babyService = {
 
       response = await fetch(`${BASE_URL}/children`, {
         method:  'POST',
-        headers: { 'Accept': 'application/json', ...authHeader },
+        headers: { 'Accept': 'application/json', lang: getLocale(), ...authHeader },
         body:    form,
       });
     } else {
@@ -176,6 +177,7 @@ export const babyService = {
         headers: {
           'Accept':       'application/json',
           'Content-Type': 'application/json',
+          lang:           getLocale(),
           ...authHeader,
         },
         body: JSON.stringify(body),
@@ -230,7 +232,7 @@ export const babyService = {
 
       response = await fetch(`${BASE_URL}/children`, {
         method:  'PATCH',
-        headers: { 'Accept': 'application/json', ...authHeader },
+        headers: { 'Accept': 'application/json', lang: getLocale(), ...authHeader },
         body:    form,
       });
     } else {
@@ -248,6 +250,7 @@ export const babyService = {
         headers: {
           'Accept':       'application/json',
           'Content-Type': 'application/json',
+          lang:           getLocale(),
           ...authHeader,
         },
         body: JSON.stringify(body),

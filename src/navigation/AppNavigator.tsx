@@ -16,20 +16,27 @@ import { ProfileScreen } from '../screens/settings/ProfileScreen';
 import { ChangePasswordScreen } from '../screens/settings/ChangePasswordScreen';
 import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 import { AssistantScreen } from '../screens/assistant/AssistantScreen';
+import { BabyGrowthMenuScreen } from '../screens/baby-growth/BabyGrowthMenuScreen';
+import { PhysicalGrowthScreen } from '../screens/baby-growth/PhysicalGrowthScreen';
+import { MotorDevelopmentScreen } from '../screens/baby-growth/MotorDevelopmentScreen';
+import { FeedingScreen } from '../screens/baby-growth/FeedingScreen';
 
 import { Colors, FontWeight, Shadows } from '../constants/theme';
+import { useTranslation } from '../i18n/useTranslation';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const BabiesStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
 
-// ── Stacks ────────────────────────────────────
-
 const HomeStackNavigator = () => (
   <HomeStack.Navigator screenOptions={{ headerShown: false }}>
     <HomeStack.Screen name="HomeMain" component={HomeScreen} />
     <HomeStack.Screen name="Notifications" component={NotificationsScreen} />
+    <HomeStack.Screen name="BabyGrowthMenu" component={BabyGrowthMenuScreen} />
+    <HomeStack.Screen name="PhysicalGrowth" component={PhysicalGrowthScreen} />
+    <HomeStack.Screen name="MotorDevelopment" component={MotorDevelopmentScreen} />
+    <HomeStack.Screen name="Feeding" component={FeedingScreen} />
   </HomeStack.Navigator>
 );
 
@@ -50,8 +57,6 @@ const SettingsStackNavigator = () => (
   </SettingsStack.Navigator>
 );
 
-// ── Tab Icon ──────────────────────────────────
-
 interface TabIconProps {
   name: keyof typeof Ionicons.glyphMap;
   nameFocused: keyof typeof Ionicons.glyphMap;
@@ -68,65 +73,94 @@ const TabIcon: React.FC<TabIconProps> = ({ name, nameFocused, focused, label }) 
   </View>
 );
 
-// ── Center Cry Button ─────────────────────────
-
-const CryTabIcon: React.FC<{ focused: boolean }> = ({ focused }) => (
+const CryTabIcon: React.FC<{ focused: boolean; label: string }> = ({ focused, label }) => (
   <View style={cryStyles.wrap}>
     <View style={[cryStyles.btn, focused && cryStyles.btnActive]}>
       <Ionicons name="ear" size={24} color={Colors.white} />
     </View>
-    <Text style={[tabStyles.label, focused && tabStyles.labelActive]}>Cry AI</Text>
+    <Text style={[tabStyles.label, focused && tabStyles.labelActive]}>{label}</Text>
   </View>
 );
 
-// ── Tab Navigator ─────────────────────────────
+const AppTabs: React.FC = () => {
+  const { t } = useTranslation();
 
-export const AppNavigator: React.FC = () => (
-  <Tab.Navigator
-    screenOptions={{
-      headerShown: false,
-      tabBarShowLabel: false,
-      tabBarStyle: {
-        height: 70,
-        backgroundColor: Colors.tabBg,
-        borderTopWidth: 0,
-        ...Shadows.md,
-        paddingBottom: Platform.OS === 'ios' ? 12 : 8,
-      },
-    }}
-  >
-    <Tab.Screen
-      name="Home"
-      component={HomeStackNavigator}
-      options={{ tabBarIcon: ({ focused }) => <TabIcon name="home-outline" nameFocused="home" focused={focused} label="Home" /> }}
-    />
-    <Tab.Screen
-      name="Babies"
-      component={BabiesStackNavigator}
-      options={{ tabBarIcon: ({ focused }) => <TabIcon name="people-outline" nameFocused="people" focused={focused} label="Babies" /> }}
-    />
-    <Tab.Screen
-      name="CryDetection"
-      component={CryDetectionScreen}
-      options={{ tabBarIcon: ({ focused }) => <CryTabIcon focused={focused} /> }}
-    />
-    <Tab.Screen
-      name="Assistant"
-      component={AssistantScreen}
-      options={{ tabBarIcon: ({ focused }) => <TabIcon name="chatbubble-ellipses-outline" nameFocused="chatbubble-ellipses" focused={focused} label="Assistant" /> }}
-    />
-    <Tab.Screen
-      name="Reports"
-      component={ReportsScreen}
-      options={{ tabBarIcon: ({ focused }) => <TabIcon name="bar-chart-outline" nameFocused="bar-chart" focused={focused} label="Reports" /> }}
-    />
-    <Tab.Screen
-      name="Settings"
-      component={SettingsStackNavigator}
-      options={{ tabBarIcon: ({ focused }) => <TabIcon name="settings-outline" nameFocused="settings" focused={focused} label="Settings" /> }}
-    />
-  </Tab.Navigator>
-);
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          height: 70,
+          backgroundColor: Colors.tabBg,
+          borderTopWidth: 0,
+          ...Shadows.md,
+          paddingBottom: Platform.OS === 'ios' ? 12 : 8,
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeStackNavigator}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="home-outline" nameFocused="home" focused={focused} label={t('tabs.home')} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Babies"
+        component={BabiesStackNavigator}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="people-outline" nameFocused="people" focused={focused} label={t('tabs.babies')} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CryDetection"
+        component={CryDetectionScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <CryTabIcon focused={focused} label={t('tabs.cryAi')} />,
+        }}
+      />
+      <Tab.Screen
+        name="Assistant"
+        component={AssistantScreen}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name="chatbubble-ellipses-outline"
+              nameFocused="chatbubble-ellipses"
+              focused={focused}
+              label={t('tabs.assistant')}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Reports"
+        component={ReportsScreen}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="bar-chart-outline" nameFocused="bar-chart" focused={focused} label={t('tabs.reports')} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsStackNavigator}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="settings-outline" nameFocused="settings" focused={focused} label={t('tabs.settings')} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+export const AppNavigator: React.FC = () => <AppTabs />;
 
 const tabStyles = StyleSheet.create({
   wrap: { alignItems: 'center', justifyContent: 'center', gap: 2, paddingTop: 4 },
@@ -138,11 +172,19 @@ const tabStyles = StyleSheet.create({
 const cryStyles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: 2, marginTop: -20 },
   btn: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-    borderWidth: 3, borderColor: Colors.white,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: Colors.white,
   },
   btnActive: { backgroundColor: Colors.primaryDark },
 });

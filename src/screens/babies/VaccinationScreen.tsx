@@ -7,7 +7,7 @@
 //   - Status derived client-side from isTaken + scheduledDate
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ScrollView,
   TouchableOpacity, Modal, ActivityIndicator,
@@ -20,14 +20,16 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { vaccinationService, VaccineFilterType } from '../../services/vaccination.service';
 import { VaccinationRecord }         from '../../types';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
 
 type Nav = NativeStackNavigationProp<any>;
 
-// ── Status display config ─────────────────────
-const STATUS_CFG = {
-  done:      { color: Colors.success, bg: Colors.successSoft, icon: 'checkmark-circle' as const, label: 'Done'      },
-  upcoming:  { color: Colors.warning, bg: Colors.warningSoft, icon: 'time-outline'     as const, label: 'Upcoming'  },
-  overdue:   { color: Colors.danger,  bg: Colors.dangerSoft,  icon: 'alert-circle'     as const, label: 'Overdue'   },
+type TabDef = { key: VaccineFilterType; label: string; statusKey?: 'done' | 'upcoming' | 'overdue' };
+
+const STATUS_BASE = {
+  done:      { color: Colors.success, bg: Colors.successSoft, icon: 'checkmark-circle' as const },
+  upcoming:  { color: Colors.warning, bg: Colors.warningSoft, icon: 'time-outline'     as const },
+  overdue:   { color: Colors.danger,  bg: Colors.dangerSoft,  icon: 'alert-circle'     as const },
 };
 
 const VACCINE_TYPE_COLOR: Record<string, string> = {
@@ -38,31 +40,52 @@ const VACCINE_TYPE_COLOR: Record<string, string> = {
   mrna:        '#EC4899',
 };
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-const daysRelative = (iso: string): string => {
-  const diff = Math.round(
-    (new Date(iso).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000
-  );
-  if (diff === 0)  return 'Today';
-  if (diff === 1)  return 'Tomorrow';
-  if (diff === -1) return 'Yesterday';
-  if (diff > 0)    return `In ${diff} day${diff !== 1 ? 's' : ''}`;
-  return `${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''} ago`;
-};
-
-// ── Tab definitions ───────────────────────────
-type TabDef = { key: VaccineFilterType; label: string; statusKey?: 'done' | 'upcoming' | 'overdue' };
-const TABS: TabDef[] = [
-  { key: 'all',      label: 'All'      },
-  { key: 'upcoming', label: 'Upcoming', statusKey: 'upcoming'  },
-  { key: 'overdue',  label: 'Overdue',  statusKey: 'overdue'   },
-  { key: 'done',     label: 'Done',     statusKey: 'done'      },
-];
-
 export const VaccinationScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t, locale } = useTranslation();
+  const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-GB';
+
+  const formatDate = useCallback(
+    (iso: string) =>
+      new Date(iso).toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', year: 'numeric' }),
+    [dateLocale]
+  );
+
+  const daysRelative = useCallback(
+    (iso: string): string => {
+      const d = new Date(iso);
+      d.setHours(0, 0, 0, 0);
+      const t0 = new Date();
+      t0.setHours(0, 0, 0, 0);
+      const diff = Math.round((d.getTime() - t0.getTime()) / 86400000);
+      if (diff === 0) return t('vaccination.relToday');
+      if (diff === 1) return t('vaccination.relTomorrow');
+      if (diff === -1) return t('vaccination.relYesterday');
+      if (diff > 0) return diff === 1 ? t('vaccination.relInOneDay') : t('vaccination.relInDays', { n: diff });
+      const abs = Math.abs(diff);
+      return abs === 1 ? t('vaccination.relOneDayAgo') : t('vaccination.relDaysAgo', { n: abs });
+    },
+    [t]
+  );
+
+  const statusCfg = useMemo(
+    () => ({
+      done: { ...STATUS_BASE.done, label: t('vaccination.statusDone') },
+      upcoming: { ...STATUS_BASE.upcoming, label: t('vaccination.statusUpcoming') },
+      overdue: { ...STATUS_BASE.overdue, label: t('vaccination.statusOverdue') },
+    }),
+    [t]
+  );
+
+  const TABS: TabDef[] = useMemo(
+    () => [
+      { key: 'all', label: t('vaccination.tabAll') },
+      { key: 'upcoming', label: t('vaccination.tabUpcoming'), statusKey: 'upcoming' },
+      { key: 'overdue', label: t('vaccination.tabOverdue'), statusKey: 'overdue' },
+      { key: 'done', label: t('vaccination.tabDone'), statusKey: 'done' },
+    ],
+    [t]
+  );
 
   // Full list (type=all) — used for stats only
   const [allRecords,  setAllRecords]  = useState<VaccinationRecord[]>([]);
@@ -103,12 +126,12 @@ export const VaccinationScreen: React.FC = () => {
       });
       setTabRecords(data);
     } catch (err: any) {
-      setListError(err.message ?? 'Failed to load vaccinations.');
+      setListError(err.message ?? t('vaccination.loadFailed'));
     } finally {
       setListLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   // Mount: fetch both
   useEffect(() => {
@@ -146,7 +169,7 @@ export const VaccinationScreen: React.FC = () => {
       // Close modal if open on this item
       if (selected?.id === item.id) setSelected(prev => prev ? patch(prev) : null);
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to update vaccination.');
+      Alert.alert(t('vaccination.errorTitle'), err.message ?? t('vaccination.updateFailed'));
     } finally {
       setToggling(prev => { const s = new Set(prev); s.delete(item.id); return s; });
     }
@@ -154,7 +177,7 @@ export const VaccinationScreen: React.FC = () => {
 
   // ── Render card ────────────────────────────
   const renderCard = ({ item }: { item: VaccinationRecord }) => {
-    const cfg     = STATUS_CFG[item.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.upcoming;
+    const cfg     = statusCfg[item.status as keyof typeof statusCfg] ?? statusCfg.upcoming;
     const typeClr = VACCINE_TYPE_COLOR[item.vaccine?.vaccineType] ?? Colors.textMuted;
 
     return (
@@ -171,7 +194,7 @@ export const VaccinationScreen: React.FC = () => {
               <Text style={styles.vaccineName}>{item.vaccine?.name ?? '—'}</Text>
               {item.vaccine?.isBooster && (
                 <View style={styles.boosterBadge}>
-                  <Text style={styles.boosterText}>Booster</Text>
+                  <Text style={styles.boosterText}>{t('vaccination.booster')}</Text>
                 </View>
               )}
             </View>
@@ -223,7 +246,7 @@ export const VaccinationScreen: React.FC = () => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vaccinations</Text>
+        <Text style={styles.headerTitle}>{t('vaccination.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -247,8 +270,8 @@ export const VaccinationScreen: React.FC = () => {
                 <>
                   <View style={styles.progressTop}>
                     <View>
-                      <Text style={styles.progressTitle}>Vaccination Progress</Text>
-                      <Text style={styles.progressSub}>{stats.done} of {stats.total} completed</Text>
+                  <Text style={styles.progressTitle}>{t('vaccination.progressTitle')}</Text>
+                  <Text style={styles.progressSub}>{t('vaccination.progressSub', { done: stats.done, total: stats.total })}</Text>
                     </View>
                     <View style={styles.progressCircle}>
                       <Text style={styles.progressPct}>{stats.percentage}%</Text>
@@ -258,9 +281,9 @@ export const VaccinationScreen: React.FC = () => {
                     <View style={[styles.progressBarFill, { width: `${stats.percentage}%` as any }]} />
                   </View>
                   <View style={styles.statsRow}>
-                    <StatChip icon="checkmark-circle" color="#86EFAC" label="Done"    value={stats.done} />
-                    <StatChip icon="time-outline"     color="#FDE68A" label="Soon"    value={stats.upcoming}  />
-                    <StatChip icon="alert-circle"     color="#FCA5A5" label="Overdue" value={stats.overdue}   />
+                    <StatChip icon="checkmark-circle" color="#86EFAC" label={t('vaccination.done')}    value={stats.done} />
+                    <StatChip icon="time-outline"     color="#FDE68A" label={t('vaccination.soon')}    value={stats.upcoming}  />
+                    <StatChip icon="alert-circle"     color="#FCA5A5" label={t('vaccination.overdue')} value={stats.overdue}   />
                   </View>
                 </>
               )}
@@ -300,28 +323,30 @@ export const VaccinationScreen: React.FC = () => {
           listLoading ? (
             <View style={styles.centerWrap}>
               <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={styles.loadingText}>Loading vaccinations...</Text>
+              <Text style={styles.loadingText}>{t('vaccination.loading')}</Text>
             </View>
           ) : listError ? (
             <View style={styles.centerWrap}>
               <Ionicons name="cloud-offline-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.errorTitle}>Couldn't load data</Text>
+              <Text style={styles.errorTitle}>{t('vaccination.errorTitle')}</Text>
               <Text style={styles.errorSub}>{listError}</Text>
               <TouchableOpacity style={styles.retryBtn} onPress={() => fetchList(activeTab)}>
-                <Text style={styles.retryText}>Try Again</Text>
+                <Text style={styles.retryText}>{t('vaccination.tryAgain')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyEmoji}>💉</Text>
               <Text style={styles.emptyTitle}>
-                {activeTab === 'all' ? 'No vaccinations' : `No ${activeTab} vaccinations`}
+                {activeTab === 'all'
+                  ? t('vaccination.emptyAll')
+                  : t('vaccination.emptyTab', { tab: TABS.find(tab => tab.key === activeTab)?.label ?? activeTab })}
               </Text>
               <Text style={styles.emptySub}>
-                {activeTab === 'done'     ? 'No vaccinations have been completed yet.' :
-                 activeTab === 'overdue'  ? 'Great — no overdue vaccinations!' :
-                 activeTab === 'upcoming' ? 'No upcoming vaccinations scheduled.' :
-                 'No vaccination records found.'}
+                {activeTab === 'done'     ? t('vaccination.emptyDone') :
+                 activeTab === 'overdue'  ? t('vaccination.emptyOverdue') :
+                 activeTab === 'upcoming' ? t('vaccination.emptyUpcoming') :
+                 t('vaccination.emptyDefault')}
               </Text>
             </View>
           )
@@ -337,7 +362,7 @@ export const VaccinationScreen: React.FC = () => {
       >
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setSelected(null)} />
         {selected && (() => {
-          const cfg     = STATUS_CFG[selected.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.upcoming;
+          const cfg     = statusCfg[selected.status as keyof typeof statusCfg] ?? statusCfg.upcoming;
           const typeClr = VACCINE_TYPE_COLOR[selected.vaccine?.vaccineType] ?? Colors.textMuted;
           return (
             <View style={styles.modalSheet}>
@@ -355,21 +380,23 @@ export const VaccinationScreen: React.FC = () => {
               </View>
 
               <View style={styles.modalDetails}>
-                <DetailRow icon="document-text-outline"    label="Description"   value={selected.vaccine?.description ?? '—'} />
-                <DetailRow icon="calendar-outline"          label="Scheduled"     value={formatDate(selected.scheduledDate)} />
-                <DetailRow icon="time-outline"              label="When"          value={daysRelative(selected.scheduledDate)} highlight={selected.status === 'overdue'} />
-                <DetailRow icon="medical-outline"           label="Dose"          value={`Dose ${selected.vaccine?.dose}`} />
-                <DetailRow icon="flask-outline"             label="Vaccine Type"  value={selected.vaccine?.vaccineType ?? '—'} valueColor={typeClr} />
-                <DetailRow icon="calendar-number-outline"   label="Age Required"  value={
+                <DetailRow icon="document-text-outline"    label={t('vaccination.modalDescription')}   value={selected.vaccine?.description ?? '—'} />
+                <DetailRow icon="calendar-outline"          label={t('vaccination.modalScheduled')}     value={formatDate(selected.scheduledDate)} />
+                <DetailRow icon="time-outline"              label={t('vaccination.modalWhen')}          value={daysRelative(selected.scheduledDate)} highlight={selected.status === 'overdue'} />
+                <DetailRow icon="medical-outline"           label={t('vaccination.modalDoseShort')}          value={`${t('babyDetail.dose')} ${selected.vaccine?.dose ?? '—'}`} />
+                <DetailRow icon="flask-outline"             label={t('vaccination.modalVaccineType')}  value={selected.vaccine?.vaccineType ?? '—'} valueColor={typeClr} />
+                <DetailRow icon="calendar-number-outline"   label={t('vaccination.modalAgeRequired')}  value={
                   selected.vaccine?.ageRequired === 0
-                    ? 'At birth'
-                    : `${selected.vaccine?.ageRequired} month${selected.vaccine?.ageRequired !== 1 ? 's' : ''}`
+                    ? t('vaccination.atBirth')
+                    : (selected.vaccine?.ageRequired === 1
+                        ? t('vaccination.ageMonthOne', { n: 1 })
+                        : t('vaccination.ageMonths', { n: selected.vaccine?.ageRequired ?? 0 }))
                 } />
                 {selected.vaccine?.isBooster && (
-                  <DetailRow icon="refresh-outline" label="Type"     value="Booster dose" />
+                  <DetailRow icon="refresh-outline" label={t('vaccination.modalType')} value={t('vaccination.modalBoosterType')} />
                 )}
                 {selected.vaccine?.repeat && (
-                  <DetailRow icon="repeat-outline"  label="Schedule" value="Recurring"    />
+                  <DetailRow icon="repeat-outline" label={t('vaccination.modalSchedule')} value={t('vaccination.modalRecurring')} />
                 )}
               </View>
 
@@ -394,14 +421,14 @@ export const VaccinationScreen: React.FC = () => {
                       color={Colors.white}
                     />
                     <Text style={styles.modalToggleTxt}>
-                      {selected.status === 'done' ? 'Mark as Not Taken' : 'Mark as Done'}
+                      {selected.status === 'done' ? t('vaccination.markNotTaken') : t('vaccination.markDone')}
                     </Text>
                   </>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelected(null)}>
-                <Text style={styles.modalCloseTxt}>Close</Text>
+                <Text style={styles.modalCloseTxt}>{t('vaccination.modalClose')}</Text>
               </TouchableOpacity>
             </View>
           );

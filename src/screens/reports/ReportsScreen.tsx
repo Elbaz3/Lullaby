@@ -31,38 +31,19 @@ import {
   MOCK_CRY_EVENTS, MOCK_BABIES,
 } from '../../constants/mockData';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
+import { formatBabyAge } from '../../utils/babyAge';
 
 const { width } = Dimensions.get('window');
 
-// ── Helpers ───────────────────────────────────
-const fmt = (d: Date) =>
-  d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-const calcAge = (dob: string) => {
-  const birth = new Date(dob);
-  const days  = Math.floor((Date.now() - birth.getTime()) / 86400000);
-  const months = Math.floor(days / 30.44);
-  const years  = Math.floor(days / 365.25);
-  if (years < 1) {
-    const w = Math.floor((days - months * 30.44) / 7);
-    return w > 0 ? `${months}m ${w}w` : `${months} months`;
-  }
-  return `${years}y ${months - years * 12}m`;
-};
-
-// ── Date Preset Chips ─────────────────────────
-const PRESETS = [
-  { label: '7D',  days: 7  },
-  { label: '14D', days: 14 },
-  { label: '30D', days: 30 },
-  { label: 'Custom', days: 0 },
-];
+// ── Date Preset Chips (labels from i18n in screen) ─────────────────────────
+const PRESET_DAYS = [7, 14, 30, 0] as const;
 
 // ── Vital Row ─────────────────────────────────
 const VitalRow: React.FC<{
   icon: string; color: string; label: string;
-  value: string; unit: string; normal: string; status: 'normal' | 'warning' | 'alert';
-}> = ({ icon, color, label, value, unit, normal, status }) => {
+  value: string; unit: string; normal: string; normalPrefix: string; status: 'normal' | 'warning' | 'alert';
+}> = ({ icon, color, label, value, unit, normal, normalPrefix, status }) => {
   const statusColor = status === 'normal' ? Colors.success : status === 'warning' ? Colors.warning : Colors.danger;
   return (
     <View style={vStyles.row}>
@@ -71,7 +52,7 @@ const VitalRow: React.FC<{
       </View>
       <View style={vStyles.info}>
         <Text style={vStyles.label}>{label}</Text>
-        <Text style={vStyles.normal}>Normal: {normal}</Text>
+        <Text style={vStyles.normal}>{normalPrefix}{normal}</Text>
       </View>
       <View style={vStyles.valueWrap}>
         <Text style={vStyles.value}>{value}</Text>
@@ -98,13 +79,12 @@ const CRY_COLORS: Record<string, string> = {
   hungry: '#FF7043', pain: '#E53935', tired: '#7E57C2',
   discomfort: '#FFA726', needs_attention: '#EC407A', unknown: '#78909C',
 };
-const CryBar: React.FC<{ reason: string; count: number; total: number }> = ({ reason, count, total }) => {
+const CryBar: React.FC<{ reason: string; reasonLabel: string; count: number; total: number }> = ({ reason, reasonLabel, count, total }) => {
   const pct   = total > 0 ? (count / total) * 100 : 0;
   const color = CRY_COLORS[reason] ?? '#78909C';
-  const label = reason.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   return (
     <View style={cStyles.row}>
-      <Text style={cStyles.label}>{label}</Text>
+      <Text style={cStyles.label}>{reasonLabel}</Text>
       <View style={cStyles.track}>
         <View style={[cStyles.fill, { width: `${pct}%` as any, backgroundColor: color }]} />
       </View>
@@ -151,7 +131,7 @@ const sStyles = StyleSheet.create({
 });
 
 // ── Sleep Arc ─────────────────────────────────
-const SleepArc: React.FC<{ hours: number; target: number }> = ({ hours, target }) => {
+const SleepArc: React.FC<{ hours: number; target: number; recommendedText: string }> = ({ hours, target, recommendedText }) => {
   const pct = Math.min(hours / target, 1);
   const bars = 24;
   return (
@@ -169,7 +149,7 @@ const SleepArc: React.FC<{ hours: number; target: number }> = ({ hours, target }
       </View>
       <View style={sleepStyles.info}>
         <Text style={sleepStyles.hours}>{hours.toFixed(1)}h</Text>
-        <Text style={sleepStyles.target}>of {target}h recommended</Text>
+        <Text style={sleepStyles.target}>{recommendedText}</Text>
       </View>
     </View>
   );
@@ -184,13 +164,21 @@ const sleepStyles = StyleSheet.create({
 });
 
 // ── PDF Generator ─────────────────────────────
-const generatePDF = async (baby: any, user: any, from: Date, to: Date) => {
+const generatePDF = async (
+  baby: any,
+  user: any,
+  from: Date,
+  to: Date,
+  fmtPDF: (d: Date) => string,
+  babyAge: string,
+  pdfDateLocale: string,
+) => {
   const report = MOCK_DAILY_REPORT;
   const vaccinations = MOCK_VACCINATION_RECORDS;
   const cryEvents = MOCK_CRY_EVENTS;
   const sleepH = (report.sleepDuration / 60).toFixed(1);
-  const age = calcAge(baby.dateOfBirth);
-  const genDate = new Date().toLocaleDateString('en-GB', {
+  const age = babyAge;
+  const genDate = new Date().toLocaleDateString(pdfDateLocale, {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 
@@ -320,7 +308,7 @@ const generatePDF = async (baby: any, user: any, from: Date, to: Date) => {
     </div>
     <div class="baby-field">
       <div class="baby-field-label">Date of Birth</div>
-      <div class="baby-field-value">${new Date(baby.dateOfBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+      <div class="baby-field-value">${new Date(baby.dateBirth ?? baby.dateOfBirth).toLocaleDateString(pdfDateLocale, { day: '2-digit', month: 'long', year: 'numeric' })}</div>
     </div>
     <div class="baby-field">
       <div class="baby-field-label">Gender</div>
@@ -342,7 +330,7 @@ const generatePDF = async (baby: any, user: any, from: Date, to: Date) => {
 
   <!-- Report Period -->
   <div class="period-badge">
-    📅 &nbsp; Report Period: <strong>${fmt(from)}</strong> &nbsp;→&nbsp; <strong>${fmt(to)}</strong>
+    📅 &nbsp; Report Period: <strong>${fmtPDF(from)}</strong> &nbsp;→&nbsp; <strong>${fmtPDF(to)}</strong>
   </div>
 
   <!-- Vitals -->
@@ -424,7 +412,7 @@ const generatePDF = async (baby: any, user: any, from: Date, to: Date) => {
     </div>
     <div style="margin-bottom:16px">
       <div style="font-size:12px;color:#8FA3B8;margin-bottom:10px">Cry reason breakdown (${report.totalCryEvents} total events)</div>
-      ${report.cryReasonBreakdown.map((b: any) => {
+      ${(report.cryReasonBreakdown ?? []).map((b: any) => {
         const color = CRY_COLORS[b.reason] ?? '#78909C';
         const pct = Math.round((b.count / report.totalCryEvents) * 100);
         const label = b.reason.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
@@ -469,7 +457,7 @@ const generatePDF = async (baby: any, user: any, from: Date, to: Date) => {
   <div class="footer">
     <div class="footer-note">
       This report was automatically generated by Lullaby · 
-      Data collected from ${fmt(from)} to ${fmt(to)} · 
+      Data collected from ${fmtPDF(from)} to ${fmtPDF(to)} · 
       For questions, contact your pediatrician.
     </div>
     <div class="footer-brand">🍼 Lullaby</div>
@@ -484,7 +472,16 @@ const generatePDF = async (baby: any, user: any, from: Date, to: Date) => {
 // ─────────────────────────────────────────────
 //  MAIN SCREEN
 // ─────────────────────────────────────────────
+function cryReasonKey(reason: string): string {
+  return reason === 'needs_attention' ? 'lonely' : reason;
+}
+
 export const ReportsScreen: React.FC = () => {
+  const { t, locale } = useTranslation();
+  const dateLoc = locale === 'ar' ? 'ar-EG' : 'en-GB';
+  const fmt = (d: Date) =>
+    d.toLocaleDateString(dateLoc, { day: '2-digit', month: 'short', year: 'numeric' });
+
   const { activeBaby } = useBabyStore();
   const { user }       = useAuthStore();
   const baby = activeBaby ?? MOCK_BABIES[0];
@@ -499,7 +496,7 @@ export const ReportsScreen: React.FC = () => {
     if (preset === 3 && customFrom && customTo) {
       return { fromDate: customFrom, toDate: customTo };
     }
-    const days = PRESETS[preset].days || 14;
+    const days = PRESET_DAYS[preset] || 14;
     const to   = new Date();
     const from = new Date(Date.now() - days * 86400000);
     return { fromDate: from, toDate: to };
@@ -517,7 +514,15 @@ export const ReportsScreen: React.FC = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const html = await generatePDF(baby, user, fromDate, toDate);
+      const html = await generatePDF(
+        baby,
+        user,
+        fromDate,
+        toDate,
+        fmt,
+        formatBabyAge(baby.dateBirth, t),
+        dateLoc,
+      );
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
@@ -542,8 +547,8 @@ export const ReportsScreen: React.FC = () => {
         {/* ── Header ── */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Health Report</Text>
-            <Text style={styles.subtitle}>{baby.name} · {calcAge(baby.dateOfBirth)}</Text>
+            <Text style={styles.title}>{t('reports.title')}</Text>
+            <Text style={styles.subtitle}>{baby.name} · {formatBabyAge(baby.dateBirth, t)}</Text>
           </View>
           <TouchableOpacity
             style={[styles.exportBtn, exporting && { opacity: 0.7 }]}
@@ -555,16 +560,16 @@ export const ReportsScreen: React.FC = () => {
               ? <ActivityIndicator size="small" color={Colors.white} />
               : <Ionicons name="document-text-outline" size={18} color={Colors.white} />
             }
-            <Text style={styles.exportText}>{exporting ? 'Generating...' : 'Export PDF'}</Text>
+            <Text style={styles.exportText}>{exporting ? t('reports.generating') : t('reports.exportPdf')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Date Range ── */}
         <View style={[styles.dateCard, Shadows.sm]}>
           <View style={styles.datePresets}>
-            {PRESETS.map((p, i) => (
+            {PRESET_DAYS.map((days, i) => (
               <TouchableOpacity
-                key={p.label}
+                key={String(days)}
                 style={[styles.presetChip, preset === i && styles.presetChipActive]}
                 onPress={() => {
                   setPreset(i);
@@ -572,7 +577,7 @@ export const ReportsScreen: React.FC = () => {
                 }}
               >
                 <Text style={[styles.presetText, preset === i && styles.presetTextActive]}>
-                  {p.label}
+                  {days === 0 ? t('reports.custom') : t('reports.rangeDays', { n: days })}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -588,12 +593,12 @@ export const ReportsScreen: React.FC = () => {
         {/* ── Summary Chips ── */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.summaryRow}>
           {[
-            { icon: 'heart-outline',      color: '#E53935', bg: '#FFEBEE', label: 'Avg HR',      value: `${report.avgHeartRate} bpm` },
-            { icon: 'thermometer-outline',color: '#FF8F00', bg: '#FFF8E1', label: 'Avg Temp',     value: `${report.avgTemperature}°C` },
-            { icon: 'water-outline',       color: '#43A047', bg: '#E8F5E9', label: 'Avg O₂',      value: `${report.avgOxygenLevel}%` },
-            { icon: 'moon-outline',        color: '#7E57C2', bg: '#EDE7F6', label: 'Sleep',        value: `${sleepH.toFixed(1)}h` },
-            { icon: 'mic-outline',         color: '#EC407A', bg: '#FCE4EC', label: 'Cry Events',   value: `${report.totalCryEvents}` },
-            { icon: 'shield-checkmark-outline', color: '#26A69A', bg: '#E0F2F1', label: 'Vaccines', value: `${completedVax} done` },
+            { icon: 'heart-outline',      color: '#E53935', bg: '#FFEBEE', label: t('reports.avgHr'),      value: `${report.avgHeartRate} bpm` },
+            { icon: 'thermometer-outline',color: '#FF8F00', bg: '#FFF8E1', label: t('reports.avgTemp'),     value: `${report.avgTemperature}°C` },
+            { icon: 'water-outline',       color: '#43A047', bg: '#E8F5E9', label: t('reports.avgO2'),      value: `${report.avgOxygenLevel}%` },
+            { icon: 'moon-outline',        color: '#7E57C2', bg: '#EDE7F6', label: t('reports.sleep'),        value: `${sleepH.toFixed(1)}h` },
+            { icon: 'mic-outline',         color: '#EC407A', bg: '#FCE4EC', label: t('reports.cryEvents'),   value: `${report.totalCryEvents}` },
+            { icon: 'shield-checkmark-outline', color: '#26A69A', bg: '#E0F2F1', label: t('reports.vaccines'), value: t('reports.vaccinesDone', { n: completedVax }) },
           ].map(s => (
             <View key={s.label} style={[styles.summaryChip, { backgroundColor: s.bg }]}>
               <Ionicons name={s.icon as any} size={16} color={s.color} />
@@ -604,36 +609,42 @@ export const ReportsScreen: React.FC = () => {
         </ScrollView>
 
         {/* ── Vitals Section ── */}
-        <Section icon="heart" iconColor="#E53935" title="Vital Signs">
-          <VitalRow icon="heart-outline"       color="#E53935" label="Heart Rate"     value={`${report.avgHeartRate}`}    unit="bpm" normal="100–160 bpm" status="normal" />
-          <VitalRow icon="thermometer-outline" color="#FF8F00" label="Temperature"    value={`${report.avgTemperature}`}  unit="°C"  normal="36.5–37.5°C" status="normal" />
-          <VitalRow icon="water-outline"        color="#43A047" label="Oxygen Level"  value={`${report.avgOxygenLevel}`}  unit="%"   normal="95–100%" status="normal" />
-          <VitalRow icon="pulse-outline"        color="#1E88E5" label="Breathing Rate" value={`${report.avgBreathingRate}`} unit="bpm" normal="30–60 bpm" status="normal" />
+        <Section icon="heart" iconColor="#E53935" title={t('reports.vitalSigns')}>
+          <VitalRow icon="heart-outline"       color="#E53935" label={t('reports.heartRate')}     value={`${report.avgHeartRate}`}    unit="bpm" normal={t('reports.hrNormal')} normalPrefix={t('reports.normalPrefix')} status="normal" />
+          <VitalRow icon="thermometer-outline" color="#FF8F00" label={t('reports.temperature')}    value={`${report.avgTemperature}`}  unit="°C"  normal={t('reports.tempNormal')} normalPrefix={t('reports.normalPrefix')} status="normal" />
+          <VitalRow icon="water-outline"        color="#43A047" label={t('reports.oxygenLevel')}  value={`${report.avgOxygenLevel}`}  unit="%"   normal={t('reports.o2Normal')} normalPrefix={t('reports.normalPrefix')} status="normal" />
+          <VitalRow icon="pulse-outline"        color="#1E88E5" label={t('reports.breathingRate')} value={`${report.avgBreathingRate}`} unit="bpm" normal={t('reports.breathNormal')} normalPrefix={t('reports.normalPrefix')} status="normal" />
         </Section>
 
         {/* ── Sleep Section ── */}
-        <Section icon="moon-outline" iconColor="#7E57C2" title="Sleep Patterns"
-          badge={sleepH >= 12 ? 'Healthy' : 'Low'} badgeColor={sleepH >= 12 ? Colors.success : Colors.warning}
+        <Section icon="moon-outline" iconColor="#7E57C2" title={t('reports.sleepPatterns')}
+          badge={sleepH >= 12 ? t('reports.sleepHealthy') : t('reports.sleepLow')} badgeColor={sleepH >= 12 ? Colors.success : Colors.warning}
         >
-          <SleepArc hours={sleepH} target={14} />
+          <SleepArc hours={sleepH} target={14} recommendedText={t('reports.sleepOfRecommended', { h: 14 })} />
           <Text style={styles.sleepNote}>
-            Recommended for infants: 12–16h/day including naps. Sleep tracked via motion and breathing sensors.
+            {t('reports.sleepNote')}
           </Text>
         </Section>
 
         {/* ── Cry Analysis Section ── */}
-        <Section icon="mic-outline" iconColor="#EC407A" title="Cry Analysis"
-          badge={`${report.totalCryEvents} events`} badgeColor="#EC407A"
+        <Section icon="mic-outline" iconColor="#EC407A" title={t('reports.cryAnalysis')}
+          badge={t('reports.eventsBadge', { n: report.totalCryEvents })} badgeColor="#EC407A"
         >
-          {report.cryReasonBreakdown.map((b: any) => (
-            <CryBar key={b.reason} reason={b.reason} count={b.count} total={report.totalCryEvents} />
+          {(report.cryReasonBreakdown ?? []).map((b: any) => (
+            <CryBar
+              key={b.reason}
+              reason={b.reason}
+              reasonLabel={t(`cry.reasons.${cryReasonKey(b.reason)}.label`)}
+              count={b.count}
+              total={report.totalCryEvents}
+            />
           ))}
           <View style={styles.cryEventsList}>
-            <Text style={styles.subSectionTitle}>Recent Events</Text>
+            <Text style={styles.subSectionTitle}>{t('reports.recentEvents')}</Text>
             {cryEvents.slice(0, 4).map(e => {
               const color = CRY_COLORS[e.reason] ?? '#78909C';
-              const label = e.reason.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-              const time  = new Date(e.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+              const label = t(`cry.reasons.${cryReasonKey(e.reason)}.label`);
+              const time  = new Date(e.timestamp).toLocaleTimeString(dateLoc, { hour: '2-digit', minute: '2-digit' });
               return (
                 <View key={e.id} style={styles.eventRow}>
                   <View style={[styles.eventDot, { backgroundColor: color }]} />
@@ -649,8 +660,8 @@ export const ReportsScreen: React.FC = () => {
         </Section>
 
         {/* ── Vaccinations Section ── */}
-        <Section icon="shield-checkmark-outline" iconColor="#26A69A" title="Vaccination Records"
-          badge={overdueVax > 0 ? `${overdueVax} overdue` : 'Up to date'} badgeColor={overdueVax > 0 ? Colors.danger : Colors.success}
+        <Section icon="shield-checkmark-outline" iconColor="#26A69A" title={t('reports.vaccinationRecords')}
+          badge={overdueVax > 0 ? t('reports.overdueBadge', { n: overdueVax }) : t('reports.upToDate')} badgeColor={overdueVax > 0 ? Colors.danger : Colors.success}
         >
           {vaccinations.map(v => {
             const statusColor = v.status === 'completed' ? Colors.success : v.status === 'overdue' ? Colors.danger : Colors.warning;
@@ -659,12 +670,12 @@ export const ReportsScreen: React.FC = () => {
               <View key={v.id} style={styles.vacRow}>
                 <Ionicons name={statusIcon as any} size={18} color={statusColor} />
                 <View style={styles.vacInfo}>
-                  <Text style={styles.vacName}>{v.vaccineName} <Text style={styles.vacDose}>Dose {v.doseNumber}</Text></Text>
+                  <Text style={styles.vacName}>{v.vaccineName} <Text style={styles.vacDose}>{t('reports.vacDoseLabel', { n: v.doseNumber })}</Text></Text>
                   <Text style={styles.vacDate}>{v.administeredDate ?? v.scheduledDate}</Text>
                 </View>
                 <View style={[styles.vacStatus, { backgroundColor: statusColor + '18' }]}>
                   <Text style={[styles.vacStatusText, { color: statusColor }]}>
-                    {v.status.charAt(0).toUpperCase() + v.status.slice(1)}
+                    {v.status === 'completed' ? t('reports.vacStatusCompleted') : v.status === 'overdue' ? t('reports.vacStatusOverdue') : t('reports.vacStatusUpcoming')}
                   </Text>
                 </View>
               </View>
@@ -676,7 +687,7 @@ export const ReportsScreen: React.FC = () => {
         <View style={styles.disclaimer}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.warning} />
           <Text style={styles.disclaimerText}>
-            This report is a supplementary reference for healthcare professionals. It does not constitute a medical diagnosis. Please consult a qualified pediatrician.
+            {t('reports.disclaimer')}
           </Text>
         </View>
 

@@ -10,57 +10,51 @@ import { Colors, FontSize, FontWeight, Spacing, Shadows } from '../../constants/
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { useTranslation } from '../../i18n/useTranslation';
 
 export const ChangePasswordScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [form, setForm] = useState({ current: '', newPass: '', confirm: '' });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const [loading, setLoading] = useState(false);
 
-    const { changePassword, isLoading, error, clearError } = useAuthStore();
-  
+  const { changePassword } = useAuthStore();
 
   const set = (key: keyof typeof form) => (val: string) =>
     setForm(prev => ({ ...prev, [key]: val }));
 
   const validate = () => {
     const e: Partial<typeof form> = {};
-    if (!form.current) e.current = 'Current password is required';
-    if (!form.newPass) e.newPass = 'New password is required';
-    else if (form.newPass.length < 8) e.newPass = 'Min 8 characters';
-    else if (form.newPass === form.current) e.newPass = 'Must be different from current password';
-    if (!form.confirm) e.confirm = 'Please confirm your password';
-    else if (form.newPass !== form.confirm) e.confirm = 'Passwords do not match';
+    if (!form.current) e.current = t('changePassword.valCurrent');
+    if (!form.newPass) e.newPass = t('changePassword.valNew');
+    else if (form.newPass.length < 8) e.newPass = t('changePassword.valMin8');
+    else if (form.newPass === form.current) e.newPass = t('changePassword.valDiff');
+    if (!form.confirm) e.confirm = t('changePassword.valConfirm');
+    else if (form.newPass !== form.confirm) e.confirm = t('changePassword.valMismatch');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleChange = async () => {
+  const handleSend = async () => {
     if (!validate()) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setLoading(false);
-    Alert.alert('Password Changed!', 'Your password has been updated successfully.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
-  };
-
-    const handleSend = async () => {
-    if (!validate()) return;
     try {
       await changePassword(form.current, form.newPass, form.confirm);
-      Alert.alert('Password Changed!', 'Your password has been updated successfully.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert(t('changePassword.successTitle'), t('changePassword.successMsg'), [
+        { text: t('changePassword.ok'), onPress: () => navigation.goBack() },
       ]);
     } catch {
       // error shown from store
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const requirements = [
-    { label: 'At least 8 characters', met: form.newPass.length >= 8 },
-    { label: 'Different from current password', met: form.newPass !== form.current && form.newPass.length > 0 },
-    { label: 'Passwords match', met: form.newPass === form.confirm && form.confirm.length > 0 },
+    { label: t('changePassword.req8'), met: form.newPass.length >= 8 },
+    { label: t('changePassword.reqDiff'), met: form.newPass !== form.current && form.newPass.length > 0 },
+    { label: t('changePassword.reqMatch'), met: form.newPass === form.confirm && form.confirm.length > 0 },
   ];
 
   return (
@@ -70,7 +64,7 @@ export const ChangePasswordScreen: React.FC = () => {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Change Password</Text>
+          <Text style={styles.headerTitle}>{t('changePassword.title')}</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -80,15 +74,15 @@ export const ChangePasswordScreen: React.FC = () => {
               <Ionicons name="lock-closed-outline" size={36} color={Colors.primary} />
             </View>
             <Text style={styles.subtitle}>
-              Create a strong password to keep your account secure
+              {t('changePassword.subtitle')}
             </Text>
           </View>
 
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Current Password"
-              placeholder="Enter current password"
+              label={t('changePassword.current')}
+              placeholder={t('changePassword.currentPh')}
               value={form.current}
               onChangeText={set('current')}
               isPassword
@@ -96,8 +90,8 @@ export const ChangePasswordScreen: React.FC = () => {
               error={errors.current}
             />
             <Input
-              label="New Password"
-              placeholder="Min 8 characters"
+              label={t('changePassword.new')}
+              placeholder={t('changePassword.newPh')}
               value={form.newPass}
               onChangeText={set('newPass')}
               isPassword
@@ -105,8 +99,8 @@ export const ChangePasswordScreen: React.FC = () => {
               error={errors.newPass}
             />
             <Input
-              label="Confirm New Password"
-              placeholder="Re-enter new password"
+              label={t('changePassword.confirm')}
+              placeholder={t('changePassword.confirmPh')}
               value={form.confirm}
               onChangeText={set('confirm')}
               isPassword
@@ -118,7 +112,7 @@ export const ChangePasswordScreen: React.FC = () => {
           {/* Requirements */}
           {form.newPass.length > 0 && (
             <View style={styles.requirements}>
-              <Text style={styles.reqTitle}>Password Requirements</Text>
+              <Text style={styles.reqTitle}>{t('changePassword.reqTitle')}</Text>
               {requirements.map(req => (
                 <View key={req.label} style={styles.reqRow}>
                   <Ionicons
@@ -134,7 +128,7 @@ export const ChangePasswordScreen: React.FC = () => {
             </View>
           )}
 
-          <Button label="Update Password" onPress={handleSend} loading={loading} />
+          <Button label={t('changePassword.update')} onPress={handleSend} loading={loading} />
           <View style={{ height: Spacing.xl }} />
         </ScrollView>
       </KeyboardAvoidingView>

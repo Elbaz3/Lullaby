@@ -192,6 +192,7 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types';
+import { useTranslation } from '../../i18n/useTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -200,6 +201,7 @@ type Props = {
 };
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container}>
       {/* 1. Top Section: Oval Image (Mimicking Flutter's ClipOval) */}
@@ -218,12 +220,12 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.textGroup}>
           {/* RichText equivalent */}
           <Text style={styles.headline}>
-            <Text style={styles.welcomeText}>Welcome to </Text>
-            <Text style={styles.brandText}>Lullaby</Text>
+            <Text style={styles.welcomeText}>{t('welcome.welcomeTo')}</Text>
+            <Text style={styles.brandText}>{t('welcome.brand')}</Text>
           </Text>
 
           <Text style={styles.subtitle}>
-            Monitor your baby’s health and understand their needs with ease
+            {t('welcome.subtitle')}
           </Text>
         </View>
 
@@ -233,7 +235,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('Register')}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t('welcome.continue')}</Text>
         </TouchableOpacity>
         
         {/* Spacer to match Flutter's bottom padding */}

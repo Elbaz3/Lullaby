@@ -20,6 +20,7 @@ import {
   DeviceType,
   ApiError,
 } from './api';
+import { getLocale } from '../store/localeStore';
 import { MOCK_USER, mockDelay } from '../constants/mockData';
 import {
   User,
@@ -223,7 +224,7 @@ export const authService = {
 
       response = await fetch(`${BASE_URL}/users/my-profile`, {
         method:  'PATCH',
-        headers: { 'Accept': 'application/json', ...authHeader },
+        headers: { 'Accept': 'application/json', lang: getLocale(), ...authHeader },
         body:    form,
       });
     } else {
@@ -237,6 +238,7 @@ export const authService = {
         headers: {
           'Accept':       'application/json',
           'Content-Type': 'application/json',
+          lang:           getLocale(),
           ...authHeader,
         },
         body: JSON.stringify(body),
@@ -249,6 +251,22 @@ export const authService = {
       throw new Error(mapError(raw));
     }
     return json.data as User;
+  },
+
+  /** POST /users/change-password — body shape must match backend DTO */
+  changePassword: async (payload: {
+    currentPassword: string;
+    newPassword: string;
+    newPasswordConfirm: string;
+  }): Promise<void> => {
+    await apiRequest(ENDPOINTS.CHANGE_PASSWORD, {
+      method: 'POST',
+      body: {
+        currentPassword: payload.currentPassword,
+        newPassword: payload.newPassword,
+        newPasswordConfirm: payload.newPasswordConfirm,
+      },
+    });
   },
 
   isAuthenticated: async (): Promise<boolean> => {

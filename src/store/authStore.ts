@@ -40,6 +40,7 @@ interface AuthState {
   updateProfile:       (payload: { name?: string; dateOfBirth?: string }, avatarUri?: string | null) => Promise<void>;
   forgotPassword:      (identifier: string)                                                    => Promise<void>;
   verifyForgotPassword:(payload: { identifier: string; otp: string; password: string; passwordConfirm: string }) => Promise<void>;
+  changePassword:      (currentPassword: string, newPassword: string, newPasswordConfirm: string) => Promise<void>;
   completeOnboarding:  ()                                                                     => Promise<void>;
   logout:              ()                                                                     => Promise<void>;
   clearError:          ()                                                                     => void;
@@ -211,6 +212,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     } catch (err: any) {
       set({ error: err.message ?? 'Failed to reset password.', isLoading: false });
+      throw err;
+    }
+  },
+
+  changePassword: async (currentPassword, newPassword, newPasswordConfirm) => {
+    set({ isLoading: true, error: null });
+    try {
+      await authService.changePassword({
+        currentPassword,
+        newPassword,
+        newPasswordConfirm,
+      });
+      set({ isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message ?? 'Failed to change password.', isLoading: false });
       throw err;
     }
   },

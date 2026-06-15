@@ -21,87 +21,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { tokenStorage, BASE_URL } from '../../services/api';
+import { getLocale } from '../../store/localeStore';
 import * as FileSystem from 'expo-file-system';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
+import { useTranslation } from '../../i18n/useTranslation';
 
 const { width, height } = Dimensions.get('window');
 
-// ── Cry Reason Metadata ───────────────────────
-// Standard infant cry research categories
-// Icons from Ionicons, no emojis
-const CRY_REASONS: Record<string, {
-  label:       string;
-  icon:        string;
-  color:       string;
-  bg:          string;
-  tip:         string;
-  description: string;
-}> = {
-  hungry: {
-    label:       'Hungry',
-    icon:        'restaurant-outline',
-    color:       '#FF7043',
-    bg:          '#FFF3F0',
-    tip:         'Try feeding your baby. Hunger cries are usually rhythmic and repetitive.',
-    description: 'Baby may need to be fed. Look for rooting or sucking motions.',
-  },
-  pain: {
-    label:       'Pain / Discomfort',
-    icon:        'medical-outline',
-    color:       '#E53935',
-    bg:          '#FFEBEE',
-    tip:         'Check for anything causing discomfort — gas, rash, or tight clothing.',
-    description: 'Pain cries are sudden, high-pitched and intense. Consult a doctor if persistent.',
-  },
-  tired: {
-    label:       'Tired',
-    icon:        'moon-outline',
-    color:       '#7E57C2',
-    bg:          '#F3E5F5',
-    tip:         'Create a calm environment. Dim lights and reduce noise.',
-    description: 'Baby is showing signs of sleepiness. A quiet, dark room may help.',
-  },
-  burping: {
-    label:       'Needs Burping',
-    icon:        'water-outline',
-    color:       '#26A69A',
-    bg:          '#E0F2F1',
-    tip:         'Hold baby upright and gently pat their back.',
-    description: 'Baby may have trapped gas after feeding. Burping can provide relief.',
-  },
-  lonely: {
-    label:       'Needs Attention',
-    icon:        'heart-outline',
-    color:       '#EC407A',
-    bg:          '#FCE4EC',
-    tip:         'Pick up and hold your baby. Skin-to-skin contact is very soothing.',
-    description: 'Baby wants to be held or needs stimulation and comfort.',
-  },
-  discomfort: {
-    label:       'Uncomfortable',
-    icon:        'thermometer-outline',
-    color:       '#FFA726',
-    bg:          '#FFF8E1',
-    tip:         'Check temperature, diaper, or whether clothing is too tight.',
-    description: 'Baby may be too hot, cold, or have a wet/dirty diaper.',
-  },
-  belly_pain: {
-    label:       'Belly Pain',
-    icon:        'fitness-outline',
-    color:       '#EF6C00',
-    bg:          '#FFF3E0',
-    tip:         'Try gentle tummy massage in circular motions or hold baby face-down on your forearm. Bicycle leg movements can help relieve gas.',
-    description: 'Baby may be experiencing abdominal pain, gas, or colic. This is common in infants under 4 months.',
-  },
-  unknown: {
-    label:       'Unclear',
-    icon:        'help-circle-outline',
-    color:       '#78909C',
-    bg:          '#ECEFF1',
-    tip:         'Try common soothing methods: feeding, burping, holding, or a diaper check.',
-    description: 'The model could not identify a specific reason with high confidence.',
-  },
+// Visual-only metadata; copy comes from `cry.reasons.*` in translations.
+const CRY_STYLE: Record<string, { icon: string; color: string; bg: string }> = {
+  hungry:     { icon: 'restaurant-outline', color: '#FF7043', bg: '#FFF3F0' },
+  pain:       { icon: 'medical-outline',    color: '#E53935', bg: '#FFEBEE' },
+  tired:      { icon: 'moon-outline',       color: '#7E57C2', bg: '#F3E5F5' },
+  burping:    { icon: 'water-outline',      color: '#26A69A', bg: '#E0F2F1' },
+  lonely:     { icon: 'heart-outline',      color: '#EC407A', bg: '#FCE4EC' },
+  discomfort: { icon: 'thermometer-outline', color: '#FFA726', bg: '#FFF8E1' },
+  belly_pain: { icon: 'fitness-outline',    color: '#EF6C00', bg: '#FFF3E0' },
+  unknown:    { icon: 'help-circle-outline', color: '#78909C', bg: '#ECEFF1' },
 };
+
+function mapCryReasonKey(prediction: string): string {
+  if (prediction === 'needs_attention') return 'lonely';
+  if (CRY_STYLE[prediction]) return prediction;
+  return 'unknown';
+}
 
 // ── Screen States ─────────────────────────────
 type ScreenState = 'idle' | 'recording' | 'preview' | 'analyzing' | 'result';
@@ -178,11 +121,16 @@ const ResultCard: React.FC<{
   confidence: number;
   onReset: () => void;
 }> = ({ prediction, confidence, onReset }) => {
+  const { t } = useTranslation();
   const slideAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
 
-  const meta = CRY_REASONS[prediction] ?? CRY_REASONS.unknown;
+  const key  = mapCryReasonKey(prediction);
+  const meta = CRY_STYLE[key] ?? CRY_STYLE.unknown;
+  const label = t(`cry.reasons.${key}.label`);
+  const description = t(`cry.reasons.${key}.description`);
+  const tip = t(`cry.reasons.${key}.tip`);
   const pct  = Math.round(confidence * 100);
 
   useEffect(() => {
@@ -218,13 +166,13 @@ const ResultCard: React.FC<{
       </View>
 
       {/* Label */}
-      <Text style={styles.resultLabel}>{meta.label}</Text>
-      <Text style={styles.resultDescription}>{meta.description}</Text>
+      <Text style={styles.resultLabel}>{label}</Text>
+      <Text style={styles.resultDescription}>{description}</Text>
 
       {/* Confidence bar */}
       <View style={styles.confSection}>
         <View style={styles.confLabelRow}>
-          <Text style={styles.confTitle}>Confidence</Text>
+          <Text style={styles.confTitle}>{t('cry.confidence')}</Text>
           <Text style={[styles.confPct, { color: meta.color }]}>{pct}%</Text>
         </View>
         <View style={styles.confTrack}>
@@ -240,7 +188,7 @@ const ResultCard: React.FC<{
           ]} />
         </View>
         <Text style={styles.confNote}>
-          {pct >= 75 ? 'High confidence' : pct >= 50 ? 'Moderate confidence' : 'Low confidence — try recording again'}
+          {pct >= 75 ? t('cry.confHigh') : pct >= 50 ? t('cry.confModerate') : t('cry.confLow')}
         </Text>
       </View>
 
@@ -248,15 +196,15 @@ const ResultCard: React.FC<{
       <View style={[styles.tipCard, { borderLeftColor: meta.color }]}>
         <View style={styles.tipHeader}>
           <Ionicons name="bulb-outline" size={16} color={meta.color} />
-          <Text style={[styles.tipTitle, { color: meta.color }]}>What to do</Text>
+          <Text style={[styles.tipTitle, { color: meta.color }]}>{t('cry.whatToDo')}</Text>
         </View>
-        <Text style={styles.tipText}>{meta.tip}</Text>
+        <Text style={styles.tipText}>{tip}</Text>
       </View>
 
       {/* Record again */}
       <TouchableOpacity style={styles.recordAgainBtn} onPress={onReset}>
         <Ionicons name="refresh-outline" size={18} color={Colors.primary} />
-        <Text style={styles.recordAgainText}>Record Again</Text>
+        <Text style={styles.recordAgainText}>{t('cry.recordAgain')}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -266,6 +214,7 @@ const ResultCard: React.FC<{
 //  MAIN SCREEN
 // ─────────────────────────────────────────────
 export const CryDetectionScreen: React.FC = () => {
+  const { t } = useTranslation();
   const [state,       setState]       = useState<ScreenState>('idle');
   const [timer,       setTimer]       = useState(0);      // seconds elapsed
   const [metering,    setMetering]    = useState(-160);   // dB
@@ -485,6 +434,7 @@ export const CryDetectionScreen: React.FC = () => {
         method:  'POST',
         headers: {
           'Accept':        'application/json',
+          lang:            getLocale(),
           // ⚠️ Do NOT set Content-Type manually — fetch sets it automatically
           // with the correct boundary for multipart/form-data
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -500,7 +450,7 @@ export const CryDetectionScreen: React.FC = () => {
       const json = await response.json();
 
       if (!json.success) {
-        throw new Error(json.message ?? 'Prediction failed');
+        throw new Error(json.message ?? t('cry.predictionFailed'));
       }
 
       setPrediction(json.prediction);   // e.g. "belly_pain"
@@ -509,7 +459,7 @@ export const CryDetectionScreen: React.FC = () => {
 
     } catch (e: any) {
       console.error('Send error:', e);
-      setAnalyzeError(e?.message ?? 'Failed to analyze. Please try again.');
+      setAnalyzeError(e?.message ?? t('cry.analyzeFailed'));
       setState('preview');
     }
   };
@@ -548,8 +498,8 @@ export const CryDetectionScreen: React.FC = () => {
       >
         {/* ── Header ── */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Cry Analysis</Text>
-          <Text style={styles.headerSub}>Understand Your Baby's Cry</Text>
+          <Text style={styles.headerTitle}>{t('cry.analysisTitle')}</Text>
+          <Text style={styles.headerSub}>{t('cry.analysisSub')}</Text>
         </View>
 
         {/* ── Main Card ── */}
@@ -559,7 +509,7 @@ export const CryDetectionScreen: React.FC = () => {
           {state === 'idle' && (
             <View style={styles.centerContent}>
               <Text style={styles.instructionText}>
-                Press the button and let your baby cry for a few seconds so we can analyze the sound.
+                {t('cry.idleInstruction')}
               </Text>
               <View style={styles.pulseWrap}>
                 <PulseRing delay={0}    size={220} />
@@ -575,16 +525,16 @@ export const CryDetectionScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
               {!permission && (
-                <Text style={styles.permText}>Microphone permission required</Text>
+                <Text style={styles.permText}>{t('cry.permRequired')}</Text>
               )}
-              <Text style={styles.idleHint}>Tap to start recording</Text>
+              <Text style={styles.idleHint}>{t('cry.tapStart')}</Text>
             </View>
           )}
 
           {/* ── RECORDING STATE ── */}
           {state === 'recording' && (
             <View style={styles.centerContent}>
-              <Text style={styles.recordingLabel}>Recording...</Text>
+              <Text style={styles.recordingLabel}>{t('cry.recording')}</Text>
 
               {/* Waveform */}
               <View style={styles.waveformWrap}>
@@ -604,7 +554,7 @@ export const CryDetectionScreen: React.FC = () => {
                 <View style={styles.timerTrack}>
                   <View style={[styles.timerFill, { width: `${timerProgress * 100}%` as any }]} />
                 </View>
-                <Text style={styles.timerHint}>{MAX_SECONDS - timer}s remaining</Text>
+                <Text style={styles.timerHint}>{t('cry.remaining', { n: MAX_SECONDS - timer })}</Text>
               </View>
 
               {/* Stop button */}
@@ -620,8 +570,8 @@ export const CryDetectionScreen: React.FC = () => {
               <View style={styles.previewIconWrap}>
                 <Ionicons name="checkmark-circle" size={52} color={Colors.success} />
               </View>
-              <Text style={styles.previewTitle}>Recording Ready</Text>
-              <Text style={styles.previewSub}>{timer}s recorded · WAV format</Text>
+              <Text style={styles.previewTitle}>{t('cry.previewTitle')}</Text>
+              <Text style={styles.previewSub}>{t('cry.previewSub', { n: timer })}</Text>
               {/* DEBUG INFO — remove this View when done testing */}
               <View style={styles.debugBox}>
                 <Text style={styles.debugText}>
@@ -664,11 +614,11 @@ export const CryDetectionScreen: React.FC = () => {
               <View style={styles.previewActions}>
                 <TouchableOpacity style={styles.rerecordBtn} onPress={handleReset}>
                   <Ionicons name="refresh-outline" size={18} color={Colors.textMuted} />
-                  <Text style={styles.rerecordText}>Re-record</Text>
+                  <Text style={styles.rerecordText}>{t('cry.rerecord')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
                   <Ionicons name="paper-plane-outline" size={18} color={Colors.white} />
-                  <Text style={styles.sendText}>Analyze</Text>
+                  <Text style={styles.sendText}>{t('cry.analyze')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -681,9 +631,9 @@ export const CryDetectionScreen: React.FC = () => {
                 <ActivityIndicator size="large" color={Colors.primary} />
                 <View style={styles.analyzingPulse} />
               </View>
-              <Text style={styles.analyzingTitle}>Analyzing...</Text>
+              <Text style={styles.analyzingTitle}>{t('cry.analyzingTitle')}</Text>
               <Text style={styles.analyzingText}>
-                Our AI is processing the recording to understand what your baby needs.
+                {t('cry.analyzingText')}
               </Text>
             </View>
           )}
@@ -702,16 +652,19 @@ export const CryDetectionScreen: React.FC = () => {
         {/* ── Quick Reference ── */}
         {(state === 'idle' || state === 'recording') && (
           <View style={styles.referenceSection}>
-            <Text style={styles.referenceTitle}>Cry Types We Detect</Text>
+            <Text style={styles.referenceTitle}>{t('cry.referenceTitle')}</Text>
             <View style={styles.referenceGrid}>
-              {Object.entries(CRY_REASONS)
-                .filter(([k]) => k !== 'unknown')
-                .map(([key, meta]) => (
-                  <View key={key} style={[styles.refChip, { backgroundColor: meta.bg }]}>
-                    <Ionicons name={meta.icon as any} size={14} color={meta.color} />
-                    <Text style={[styles.refChipText, { color: meta.color }]}>{meta.label}</Text>
-                  </View>
-                ))}
+              {Object.keys(CRY_STYLE)
+                .filter(k => k !== 'unknown')
+                .map(key => {
+                  const meta = CRY_STYLE[key];
+                  return (
+                    <View key={key} style={[styles.refChip, { backgroundColor: meta.bg }]}>
+                      <Ionicons name={meta.icon as any} size={14} color={meta.color} />
+                      <Text style={[styles.refChipText, { color: meta.color }]}>{t(`cry.reasons.${key}.label`)}</Text>
+                    </View>
+                  );
+                })}
             </View>
           </View>
         )}
