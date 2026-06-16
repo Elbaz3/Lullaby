@@ -1,6 +1,6 @@
-import type { AppLocale } from '../types/locale';
+import type { AppLocale } from '../types/locale'
 
-type Dict = Record<string, unknown>;
+type Dict = Record<string, unknown>
 
 const en: Dict = {
   common: {
@@ -10,6 +10,8 @@ const en: Dict = {
     tryAgain: 'Try again',
     comingSoon: 'Coming soon',
     comingSoonBody: 'This section will be available in a future update.',
+    old: 'old',
+    seen: 'Seen'
   },
   settings: {
     title: 'Settings',
@@ -36,7 +38,7 @@ const en: Dict = {
     privacyPolicy: 'Privacy Policy',
     logout: 'Logout',
     logoutTitle: 'Logout',
-    logoutConfirm: 'Are you sure you want to logout?',
+    logoutConfirm: 'Are you sure you want to logout?'
   },
   tabs: {
     home: 'Home',
@@ -44,15 +46,18 @@ const en: Dict = {
     cryAi: 'Cry AI',
     assistant: 'Assistant',
     reports: 'Reports',
-    settings: 'Settings',
+    settings: 'Settings'
   },
   home: {
     goodMorning: 'Good morning',
     goodAfternoon: 'Good afternoon',
     goodEvening: 'Good evening',
+    welcomeBack: 'Welcome Back,',
     hi: 'HI, ',
     parent: 'Parent',
     viewProfile: 'View Profile',
+    routine: 'Routine',
+    vaccines: 'Vaccines',
     growthTitle: 'Baby Growth & Development',
     growthSub: 'Milestones and norms by age',
     liveMonitoring: 'Live Monitoring',
@@ -73,6 +78,7 @@ const en: Dict = {
     checkNeeded: 'Check needed',
     airQuality: 'Air Quality',
     airQualityIndex: 'Air Quality Index',
+    overallAqi: 'Overall AQI',
     noBabyTitle: 'No baby profile yet',
     noBabySubtitle: "Add your baby's profile to start monitoring",
     cryMightBe: 'Baby might be {{reason}}',
@@ -86,7 +92,7 @@ const en: Dict = {
     ageMonths: '{{n}} Months',
     ageMonthsWeeks: '{{m}} Months,{{w}} Weeks',
     ageYearsMonths: '{{y}}y {{m}}mo',
-    ageYears: '{{y}}yr',
+    ageYears: '{{y}}yr'
   },
   growth: {
     screenTitle: 'Baby Growth & Development',
@@ -108,7 +114,7 @@ const en: Dict = {
     notes: 'Notes',
     errorPhysical: 'Could not load physical growth data.',
     errorMotor: 'Could not load motor development data.',
-    errorFeeding: 'Could not load feeding guidance.',
+    errorFeeding: 'Could not load feeding guidance.'
   },
   growthBands: {
     m0_1: '0-1 Months',
@@ -120,7 +126,7 @@ const en: Dict = {
     m12_13: '12-13 Months',
     m14_15: '14-15 Months',
     m16_18: '16-18 Months',
-    m19_24: '19-24 Months',
+    m19_24: '19-24 Months'
   },
   auth: {
     loginTitle: 'Welcome back 👋',
@@ -144,7 +150,8 @@ const en: Dict = {
     emailRequired: 'Email is required',
     emailInvalid: 'Please enter a valid email address',
     phoneRequired: 'Phone number is required',
-    phoneInvalid: 'Phone must start with + and country code (e.g. +201011234567)',
+    phoneInvalid:
+      'Phone must start with + and country code (e.g. +201011234567)',
     passwordMax20: 'Password must be at most 20 characters',
     confirmRequired: 'Please confirm your password',
     passwordsMismatch: 'Passwords do not match',
@@ -162,7 +169,8 @@ const en: Dict = {
     haveAccount: 'Already have an account? ',
     signInLink: 'Sign In',
     forgotTitle: 'Forgot Password?',
-    forgotSubtitle: "Enter your email or phone number and we'll send you a reset code.",
+    forgotSubtitle:
+      "Enter your email or phone number and we'll send you a reset code.",
     sendResetCode: 'Send Reset Code',
     backToSignIn: 'Back to Sign In',
     identifierRequiredShort: 'Email or phone number is required',
@@ -176,24 +184,26 @@ const en: Dict = {
     newPasswordSubtitle: 'Create a strong password for',
     newPassword: 'New Password',
     resetPassword: 'Reset Password',
-    passwordHintCard: 'Password must be 6–20 characters. Use a mix of letters and numbers for a stronger password.',
+    passwordHintCard:
+      'Password must be 6–20 characters. Use a mix of letters and numbers for a stronger password.',
     successTitle: 'Password Reset!',
-    successSubtitle: 'Your password has been successfully reset.\nYou can now sign in with your new password.',
+    successSubtitle:
+      'Your password has been successfully reset.\nYou can now sign in with your new password.',
     goToSignIn: 'Go to Sign In',
     valPasswordRequired: 'Password is required',
     valPasswordMin6: 'Minimum 6 characters',
     valPasswordMax20: 'Maximum 20 characters',
     valConfirmRequired: 'Please confirm your password',
-    valPasswordsMismatch: 'Passwords do not match',
+    valPasswordsMismatch: 'Passwords do not match'
   },
   welcome: {
     welcomeTo: 'Welcome to ',
     brand: 'Lullaby',
     subtitle: "Monitor your baby's health and understand their needs with ease",
-    continue: 'Continue',
+    continue: 'Continue'
   },
   splash: {
-    tagline: 'Smart Baby Monitor',
+    tagline: 'Smart Baby Monitor'
   },
   babies: {
     myBabies: 'My Babies',
@@ -210,7 +220,7 @@ const en: Dict = {
     listAgeYears: '{{y}}y {{m}}mo',
     listAgeYear: '{{y}}yr',
     listFuture: 'Future date',
-    listNewborn: 'Newborn',
+    listNewborn: 'Newborn'
   },
   babyDetail: {
     title: 'Baby Profile',
@@ -255,7 +265,7 @@ const en: Dict = {
     ageMonths: '{{n}} months',
     ageYearsMonths: '{{y}}y {{m}}mo',
     ageYearOne: '{{y}} year',
-    ageYears: '{{y}} years',
+    ageYears: '{{y}} years'
   },
   addBaby: {
     editTitle: 'Edit Baby Profile',
@@ -293,11 +303,12 @@ const en: Dict = {
     cancel: 'Cancel',
     changePhoto: 'Change Photo',
     addPhoto: 'Add Photo',
-    photoHintEdit: 'Tap to change · current photo from server',
+    photoHintEdit: 'Tap to change · current photo from server'
   },
   onboarding: {
     welcomeTitle: 'My Babies',
-    welcomeSubtitle: 'Start by adding your child to\nmonitor their health, daily\nroutine, and vaccinations with\nease.',
+    welcomeSubtitle:
+      'Start by adding your child to\nmonitor their health, daily\nroutine, and vaccinations with\nease.',
     addBabyCta: 'Add New Baby',
     addDetailsTitle: 'Add Baby Details',
     addDetailsSubtitle: 'Tell us about your little one',
@@ -315,17 +326,18 @@ const en: Dict = {
     validWeight: 'Enter a valid weight',
     validHeight: 'Enter a valid height',
     connectTitle: 'Connect a Device',
-    connectSubtitle: "Link a Lullaby sensor to monitor\n",
+    connectSubtitle: 'Link a Lullaby sensor to monitor\n',
     connectSuffix: "'s health in real time",
     stepPower: 'Turn on your Lullaby device',
     stepBt: 'Make sure Bluetooth is enabled',
     stepRange: 'Keep device within 10 meters',
     pairingSoon: 'Device pairing coming soon',
     scanDevices: 'Scan for Devices',
-    skipForNow: 'Skip for now',
+    skipForNow: 'Skip for now'
   },
   notifications: {
     title: 'Notifications',
+    subtitle: 'We gently keep you informed about your baby.',
     markAllRead: 'Mark all read',
     all: 'All',
     unread: 'Unread ({{n}})',
@@ -335,10 +347,15 @@ const en: Dict = {
     emptyTitle: 'All caught up!',
     emptySub: 'No {{filter}}notifications',
     unreadWord: 'unread ',
+    askAssistant: 'Ask Baby Care Assistant',
+    seen: 'Seen',
+    markAsSeen: 'Mark as Seen'
   },
   assistant: {
-    welcomeMsg: "👋 Hi! I'm your Baby Care Assistant.\n\nI can help you with feeding schedules, sleep tips, cry interpretation, vaccination info, and general baby health questions.\n\nWhat would you like to know?",
-    errorMsg: "Sorry, I'm having trouble responding right now. Please try again.",
+    welcomeMsg:
+      "👋 Hi! I'm your Baby Care Assistant.\n\nI can help you with feeding schedules, sleep tips, cry interpretation, vaccination info, and general baby health questions.\n\nWhat would you like to know?",
+    errorMsg:
+      "Sorry, I'm having trouble responding right now. Please try again.",
     title: 'Baby Care Assistant',
     online: 'Always available',
     contextPrefix: 'Answering for ',
@@ -351,7 +368,7 @@ const en: Dict = {
     q5: 'Baby has a fever, what do I do?',
     q6: 'When to start solid foods?',
     q7: 'What is colic?',
-    q8: "Is my baby's growth normal?",
+    q8: "Is my baby's growth normal?"
   },
   profile: {
     loading: 'Loading profile...',
@@ -372,7 +389,7 @@ const en: Dict = {
     accountStatus: 'Account Status',
     active: 'Active',
     photoNewHint: 'New photo selected — will be uploaded on save',
-    photoTapHint: 'Tap avatar to change photo',
+    photoTapHint: 'Tap avatar to change photo'
   },
   changePassword: {
     title: 'Change Password',
@@ -396,7 +413,7 @@ const en: Dict = {
     valMismatch: 'Passwords do not match',
     successTitle: 'Password Changed!',
     successMsg: 'Your password has been updated successfully.',
-    ok: 'OK',
+    ok: 'OK'
   },
   reports: {
     title: 'Health Report',
@@ -408,14 +425,16 @@ const en: Dict = {
     sleepPatterns: 'Sleep Patterns',
     sleepHealthy: 'Healthy',
     sleepLow: 'Low',
-    sleepNote: 'Recommended for infants: 12–16h/day including naps. Sleep tracked via motion and breathing sensors.',
+    sleepNote:
+      'Recommended for infants: 12–16h/day including naps. Sleep tracked via motion and breathing sensors.',
     cryAnalysis: 'Cry Analysis',
     eventsBadge: '{{n}} events',
     recentEvents: 'Recent Events',
     vaccinationRecords: 'Vaccination Records',
     overdueBadge: '{{n}} overdue',
     upToDate: 'Up to date',
-    disclaimer: 'This report is a supplementary reference for healthcare professionals. It does not constitute a medical diagnosis. Please consult a qualified pediatrician.',
+    disclaimer:
+      'This report is a supplementary reference for healthcare professionals. It does not constitute a medical diagnosis. Please consult a qualified pediatrician.',
     avgHr: 'Avg HR',
     avgTemp: 'Avg Temp',
     avgO2: 'Avg O₂',
@@ -436,7 +455,7 @@ const en: Dict = {
     vacDoseLabel: 'Dose {{n}}',
     vacStatusCompleted: 'Completed',
     vacStatusOverdue: 'Overdue',
-    vacStatusUpcoming: 'Upcoming',
+    vacStatusUpcoming: 'Upcoming'
   },
   vaccination: {
     title: 'Vaccinations',
@@ -486,12 +505,13 @@ const en: Dict = {
     markDone: 'Mark as Done',
     modalClose: 'Close',
     modalType: 'Type',
-    modalSchedule: 'Schedule',
+    modalSchedule: 'Schedule'
   },
   cry: {
     analysisTitle: 'Cry Analysis',
     analysisSub: "Understand Your Baby's Cry",
-    idleInstruction: 'Press the button and let your baby cry for a few seconds so we can analyze the sound.',
+    idleInstruction:
+      'Press the button and let your baby cry for a few seconds so we can analyze the sound.',
     permRequired: 'Microphone permission required',
     tapStart: 'Tap to start recording',
     recording: 'Recording...',
@@ -501,7 +521,8 @@ const en: Dict = {
     rerecord: 'Re-record',
     analyze: 'Analyze',
     analyzingTitle: 'Analyzing...',
-    analyzingText: 'Our AI is processing the recording to understand what your baby needs.',
+    analyzingText:
+      'Our AI is processing the recording to understand what your baby needs.',
     referenceTitle: 'Cry Types We Detect',
     whatToDo: 'What to do',
     recordAgain: 'Record Again',
@@ -512,17 +533,55 @@ const en: Dict = {
     predictionFailed: 'Prediction failed',
     analyzeFailed: 'Failed to analyze. Please try again.',
     reasons: {
-      hungry: { label: 'Hungry', tip: 'Try feeding your baby. Hunger cries are usually rhythmic and repetitive.', description: 'Baby may need to be fed. Look for rooting or sucking motions.' },
-      pain: { label: 'Pain / Discomfort', tip: 'Check for anything causing discomfort — gas, rash, or tight clothing.', description: 'Pain cries are sudden, high-pitched and intense. Consult a doctor if persistent.' },
-      tired: { label: 'Tired', tip: 'Create a calm environment. Dim lights and reduce noise.', description: 'Baby is showing signs of sleepiness. A quiet, dark room may help.' },
-      burping: { label: 'Needs Burping', tip: 'Hold baby upright and gently pat their back.', description: 'Baby may have trapped gas after feeding. Burping can provide relief.' },
-      lonely: { label: 'Needs Attention', tip: 'Pick up and hold your baby. Skin-to-skin contact is very soothing.', description: 'Baby wants to be held or needs stimulation and comfort.' },
-      discomfort: { label: 'Uncomfortable', tip: 'Check temperature, diaper, or whether clothing is too tight.', description: 'Baby may be too hot, cold, or have a wet/dirty diaper.' },
-      belly_pain: { label: 'Belly Pain', tip: 'Try gentle tummy massage in circular motions or hold baby face-down on your forearm. Bicycle leg movements can help relieve gas.', description: 'Baby may be experiencing abdominal pain, gas, or colic. This is common in infants under 4 months.' },
-      unknown: { label: 'Unclear', tip: 'Try common soothing methods: feeding, burping, holding, or a diaper check.', description: 'The model could not identify a specific reason with high confidence.' },
-    },
-  },
-};
+      hungry: {
+        label: 'Hungry',
+        tip: 'Try feeding your baby. Hunger cries are usually rhythmic and repetitive.',
+        description:
+          'Baby may need to be fed. Look for rooting or sucking motions.'
+      },
+      pain: {
+        label: 'Pain / Discomfort',
+        tip: 'Check for anything causing discomfort — gas, rash, or tight clothing.',
+        description:
+          'Pain cries are sudden, high-pitched and intense. Consult a doctor if persistent.'
+      },
+      tired: {
+        label: 'Tired',
+        tip: 'Create a calm environment. Dim lights and reduce noise.',
+        description:
+          'Baby is showing signs of sleepiness. A quiet, dark room may help.'
+      },
+      burping: {
+        label: 'Needs Burping',
+        tip: 'Hold baby upright and gently pat their back.',
+        description:
+          'Baby may have trapped gas after feeding. Burping can provide relief.'
+      },
+      lonely: {
+        label: 'Needs Attention',
+        tip: 'Pick up and hold your baby. Skin-to-skin contact is very soothing.',
+        description: 'Baby wants to be held or needs stimulation and comfort.'
+      },
+      discomfort: {
+        label: 'Uncomfortable',
+        tip: 'Check temperature, diaper, or whether clothing is too tight.',
+        description: 'Baby may be too hot, cold, or have a wet/dirty diaper.'
+      },
+      belly_pain: {
+        label: 'Belly Pain',
+        tip: 'Try gentle tummy massage in circular motions or hold baby face-down on your forearm. Bicycle leg movements can help relieve gas.',
+        description:
+          'Baby may be experiencing abdominal pain, gas, or colic. This is common in infants under 4 months.'
+      },
+      unknown: {
+        label: 'Unclear',
+        tip: 'Try common soothing methods: feeding, burping, holding, or a diaper check.',
+        description:
+          'The model could not identify a specific reason with high confidence.'
+      }
+    }
+  }
+}
 
 const ar: Dict = {
   common: {
@@ -532,6 +591,8 @@ const ar: Dict = {
     tryAgain: 'حاول مرة أخرى',
     comingSoon: 'قريبًا',
     comingSoonBody: 'سيتوفر هذا القسم في تحديث لاحق.',
+    old: 'العمر',
+    seen: 'تمت المشاهدة'
   },
   settings: {
     title: 'الإعدادات',
@@ -558,7 +619,7 @@ const ar: Dict = {
     privacyPolicy: 'سياسة الخصوصية',
     logout: 'تسجيل الخروج',
     logoutTitle: 'تسجيل الخروج',
-    logoutConfirm: 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+    logoutConfirm: 'هل أنت متأكد أنك تريد تسجيل الخروج؟'
   },
   tabs: {
     home: 'الرئيسية',
@@ -566,15 +627,18 @@ const ar: Dict = {
     cryAi: 'ذكاء البكاء',
     assistant: 'المساعد',
     reports: 'التقارير',
-    settings: 'الإعدادات',
+    settings: 'الإعدادات'
   },
   home: {
     goodMorning: 'صباح الخير',
     goodAfternoon: 'مساء الخير',
     goodEvening: 'مساء الخير',
+    welcomeBack: 'مرحبًا بعودتك،',
     hi: 'أهلًا، ',
     parent: 'ولي الأمر',
     viewProfile: 'عرض الملف',
+    routine: 'الروتين',
+    vaccines: 'التطعيمات',
     growthTitle: 'نمو الطفل وتطوره',
     growthSub: 'معالم ومعايير حسب العمر',
     liveMonitoring: 'مراقبة مباشرة',
@@ -595,6 +659,7 @@ const ar: Dict = {
     checkNeeded: 'يحتاج فحص',
     airQuality: 'جودة الهواء',
     airQualityIndex: 'مؤشر جودة الهواء',
+    overallAqi: 'مؤشر الهواء الإجمالي',
     noBabyTitle: 'لا يوجد ملف طفل بعد',
     noBabySubtitle: 'أضف ملف طفلك لبدء المراقبة',
     cryMightBe: 'قد يكون الطفل {{reason}}',
@@ -608,7 +673,7 @@ const ar: Dict = {
     ageMonths: '{{n}} أشهر',
     ageMonthsWeeks: '{{m}} أشهر، {{w}} أسابيع',
     ageYearsMonths: '{{y}} س {{m}} شهرًا',
-    ageYears: '{{y}} سنة',
+    ageYears: '{{y}} سنة'
   },
   growth: {
     screenTitle: 'نمو الطفل وتطوره',
@@ -630,7 +695,7 @@ const ar: Dict = {
     notes: 'ملاحظات',
     errorPhysical: 'تعذر تحميل بيانات النمو الجسدي.',
     errorMotor: 'تعذر تحميل بيانات التطور الحركي.',
-    errorFeeding: 'تعذر تحميل إرشادات التغذية.',
+    errorFeeding: 'تعذر تحميل إرشادات التغذية.'
   },
   growthBands: {
     m0_1: '0–1 شهر',
@@ -642,7 +707,7 @@ const ar: Dict = {
     m12_13: '12–13 شهرًا',
     m14_15: '14–15 شهرًا',
     m16_18: '16–18 شهرًا',
-    m19_24: '19–24 شهرًا',
+    m19_24: '19–24 شهرًا'
   },
   auth: {
     loginTitle: 'مرحبًا بعودتك 👋',
@@ -706,13 +771,13 @@ const ar: Dict = {
     valPasswordMin6: '6 أحرف على الأقل',
     valPasswordMax20: '20 حرفًا كحد أقصى',
     valConfirmRequired: 'أكد كلمة المرور',
-    valPasswordsMismatch: 'كلمتا المرور غير متطابقتين',
+    valPasswordsMismatch: 'كلمتا المرور غير متطابقتين'
   },
   welcome: {
     welcomeTo: 'مرحبًا بك في ',
     brand: 'Lullaby',
     subtitle: 'راقب صحة طفلك وافهم احتياجاته بسهولة',
-    continue: 'متابعة',
+    continue: 'متابعة'
   },
   splash: { tagline: 'مراقبة ذكية للطفل' },
   babies: {
@@ -730,7 +795,7 @@ const ar: Dict = {
     listAgeYears: '{{y}}س {{m}}ش',
     listAgeYear: '{{y}} سنة',
     listFuture: 'تاريخ مستقبلي',
-    listNewborn: 'مولود جديد',
+    listNewborn: 'مولود جديد'
   },
   babyDetail: {
     title: 'ملف الطفل',
@@ -775,7 +840,7 @@ const ar: Dict = {
     ageMonths: '{{n}} أشهر',
     ageYearsMonths: '{{y}}س {{m}}ش',
     ageYearOne: '{{y}} سنة',
-    ageYears: '{{y}} سنوات',
+    ageYears: '{{y}} سنوات'
   },
   addBaby: {
     editTitle: 'تعديل ملف الطفل',
@@ -813,11 +878,12 @@ const ar: Dict = {
     cancel: 'إلغاء',
     changePhoto: 'تغيير الصورة',
     addPhoto: 'إضافة صورة',
-    photoHintEdit: 'اضغط للتغيير · الصورة من الخادم',
+    photoHintEdit: 'اضغط للتغيير · الصورة من الخادم'
   },
   onboarding: {
     welcomeTitle: 'أطفالي',
-    welcomeSubtitle: 'ابدأ بإضافة طفلك لمراقبة\nصحته وروتينه اليومي\nوالتطعيمات بسهولة.',
+    welcomeSubtitle:
+      'ابدأ بإضافة طفلك لمراقبة\nصحته وروتينه اليومي\nوالتطعيمات بسهولة.',
     addBabyCta: 'إضافة طفل',
     addDetailsTitle: 'بيانات الطفل',
     addDetailsSubtitle: 'أخبرنا عن صغيرك',
@@ -842,10 +908,11 @@ const ar: Dict = {
     stepRange: 'ابقِ الجهاز ضمن 10 أمتار',
     pairingSoon: 'ربط الجهاز قريبًا',
     scanDevices: 'بحث عن أجهزة',
-    skipForNow: 'تخطّي الآن',
+    skipForNow: 'تخطّي الآن'
   },
   notifications: {
     title: 'الإشعارات',
+    subtitle: 'نبقيك على اطلاع دائم وبكل رفق بكل ما يخص طفلك.',
     markAllRead: 'تعليم الكل كمقروء',
     all: 'الكل',
     unread: 'غير مقروء ({{n}})',
@@ -855,9 +922,13 @@ const ar: Dict = {
     emptyTitle: 'لا جديد!',
     emptySub: 'لا توجد {{filter}}إشعارات',
     unreadWord: 'غير مقروءة ',
+    askAssistant: 'اسأل مساعد رعاية الطفل',
+    seen: 'تمت المشاهدة',
+    markAsSeen: 'تعليم كمقروء'
   },
   assistant: {
-    welcomeMsg: '👋 مرحبًا! أنا مساعد رعاية الطفل.\n\nيمكنني المساعدة في التغذية، النوم، تفسير البكاء، التطعيم، وأسئلة الصحة العامة.\n\nما الذي تريد معرفته؟',
+    welcomeMsg:
+      '👋 مرحبًا! أنا مساعد رعاية الطفل.\n\nيمكنني المساعدة في التغذية، النوم، تفسير البكاء، التطعيم، وأسئلة الصحة العامة.\n\nما الذي تريد معرفته؟',
     errorMsg: 'عذرًا، حدث خطأ. حاول مرة أخرى.',
     title: 'مساعد رعاية الطفل',
     online: 'متاح دائمًا',
@@ -871,7 +942,7 @@ const ar: Dict = {
     q5: 'الطفل لديه حمى، ماذا أفعل؟',
     q6: 'متى أبدأ الأطعمة الصلبة؟',
     q7: 'ما هو المغص؟',
-    q8: 'هل نمو طفلي طبيعي؟',
+    q8: 'هل نمو طفلي طبيعي؟'
   },
   profile: {
     loading: 'جاري تحميل الملف...',
@@ -892,7 +963,7 @@ const ar: Dict = {
     accountStatus: 'حالة الحساب',
     active: 'نشط',
     photoNewHint: 'صورة جديدة — ستُرفع عند الحفظ',
-    photoTapHint: 'اضغط على الصورة للتغيير',
+    photoTapHint: 'اضغط على الصورة للتغيير'
   },
   changePassword: {
     title: 'تغيير كلمة المرور',
@@ -916,7 +987,7 @@ const ar: Dict = {
     valMismatch: 'غير متطابقة',
     successTitle: 'تم تغيير كلمة المرور!',
     successMsg: 'تم تحديث كلمة المرور بنجاح.',
-    ok: 'حسنًا',
+    ok: 'حسنًا'
   },
   reports: {
     title: 'تقرير الصحة',
@@ -943,10 +1014,10 @@ const ar: Dict = {
     cryEvents: 'أحداث بكاء',
     vaccines: 'لقاحات',
     vaccinesDone: '{{n}} مكتمل',
-    heartRate: 'معدل النبض',
+    heartRate: 'النبض',
     temperature: 'الحرارة',
     oxygenLevel: 'الأكسجة',
-    breathingRate: 'معدل التنفس',
+    breathingRate: 'التنفس',
     hrNormal: '100–160 نبضة/د',
     tempNormal: '36.5–37.5°م',
     o2Normal: '95–100٪',
@@ -956,7 +1027,7 @@ const ar: Dict = {
     vacDoseLabel: 'جرعة {{n}}',
     vacStatusCompleted: 'مكتمل',
     vacStatusOverdue: 'متأخر',
-    vacStatusUpcoming: 'قادم',
+    vacStatusUpcoming: 'قادم'
   },
   vaccination: {
     title: 'التطعيمات',
@@ -1006,7 +1077,7 @@ const ar: Dict = {
     markDone: 'تعليم كمكتمل',
     modalClose: 'إغلاق',
     modalType: 'النوع',
-    modalSchedule: 'الجدول',
+    modalSchedule: 'الجدول'
   },
   cry: {
     analysisTitle: 'تحليل البكاء',
@@ -1032,28 +1103,61 @@ const ar: Dict = {
     predictionFailed: 'فشل التنبؤ',
     analyzeFailed: 'فشل التحليل. حاول مرة أخرى.',
     reasons: {
-      hungry: { label: 'جوع', tip: 'جرّب الإرضاع. بكاء الجوع غالبًا إيقاعي.', description: 'قد يحتاج الطفل للرضاعة. لاحظ الحركة نحو الثدي.' },
-      pain: { label: 'ألم / انزعاج', tip: 'افحص الغازات، الطفح، أو الملابس الضيقة.', description: 'بكاء الألم مفاجئ وعالٍ. استشر الطبيب إن استمر.' },
-      tired: { label: 'تعب', tip: 'بيئة هادئة، إضاءة خافتة.', description: 'علامات النعاس. غرفة هادئة تساعد.' },
-      burping: { label: 'يحتاج التجشؤ', tip: 'أمسك الطفل منتصبًا وربت برفق.', description: 'غاز محبوس بعد الرضاعة.' },
-      lonely: { label: 'يحتاج انتباهًا', tip: 'احمل الطفل. الجلد للجلد مهدئ.', description: 'يريد الحضن أو التحفيز.' },
-      discomfort: { label: 'غير مرتاح', tip: 'افحص الحرارة، الحفاض، أو الملابس.', description: 'حرارة، برد، أو حفاض متسخ.' },
-      belly_pain: { label: 'ألم بطن', tip: 'دلك البطن برفق أو حركات الدراجة للغازات.', description: 'ألم بطني أو مغص شائع تحت 4 أشهر.' },
-      unknown: { label: 'غير واضح', tip: 'جرّب الإرضاع، التجشؤ، الحضن، أو فحص الحفاض.', description: 'لم يتعرّف النموذج على سبب واضح بثقة عالية.' },
-    },
-  },
-};
+      hungry: {
+        label: 'جوع',
+        tip: 'جرّب الإرضاع. بكاء الجوع غالبًا إيقاعي.',
+        description: 'قد يحتاج الطفل للرضاعة. لاحظ الحركة نحو الثدي.'
+      },
+      pain: {
+        label: 'ألم / انزعاج',
+        tip: 'افحص الغازات، الطفح، أو الملابس الضيقة.',
+        description: 'بكاء الألم مفاجئ وعالٍ. استشر الطبيب إن استمر.'
+      },
+      tired: {
+        label: 'تعب',
+        tip: 'بيئة هادئة، إضاءة خافتة.',
+        description: 'علامات النعاس. غرفة هادئة تساعد.'
+      },
+      burping: {
+        label: 'يحتاج التجشؤ',
+        tip: 'أمسك الطفل منتصبًا وربت برفق.',
+        description: 'غاز محبوس بعد الرضاعة.'
+      },
+      lonely: {
+        label: 'يحتاج انتباهًا',
+        tip: 'احمل الطفل. الجلد للجلد مهدئ.',
+        description: 'يريد الحضن أو التحفيز.'
+      },
+      discomfort: {
+        label: 'غير مرتاح',
+        tip: 'افحص الحرارة، الحفاض، أو الملابس.',
+        description: 'حرارة، برد، أو حفاض متسخ.'
+      },
+      belly_pain: {
+        label: 'ألم بطن',
+        tip: 'دلك البطن برفق أو حركات الدراجة للغازات.',
+        description: 'ألم بطني أو مغص شائع تحت 4 أشهر.'
+      },
+      unknown: {
+        label: 'غير واضح',
+        tip: 'جرّب الإرضاع، التجشؤ، الحضن، أو فحص الحفاض.',
+        description: 'لم يتعرّف النموذج على سبب واضح بثقة عالية.'
+      }
+    }
+  }
+}
 
-const dicts: Record<AppLocale, Dict> = { en, ar };
+const dicts: Record<AppLocale, Dict> = { en, ar }
 
 function lookup(obj: Dict, path: string): string | undefined {
-  const parts = path.split('.');
-  let cur: unknown = obj;
+  const parts = path.split('.')
+  let cur: unknown = obj
   for (const p of parts) {
-    if (cur === null || cur === undefined || typeof cur !== 'object') return undefined;
-    cur = (cur as Dict)[p];
+    if (cur === null || cur === undefined || typeof cur !== 'object')
+      return undefined
+    cur = (cur as Dict)[p]
   }
-  return typeof cur === 'string' ? cur : undefined;
+  return typeof cur === 'string' ? cur : undefined
 }
 
 export function translate(
@@ -1061,12 +1165,15 @@ export function translate(
   key: string,
   vars?: Record<string, string | number>
 ): string {
-  const primary = dicts[locale] ?? en;
-  let template = lookup(primary, key) ?? lookup(en, key) ?? key;
+  const primary = dicts[locale] ?? en
+  let template = lookup(primary, key) ?? lookup(en, key) ?? key
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
-      template = template.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v));
+      template = template.replace(
+        new RegExp(`\\{\\{${k}\\}\\}`, 'g'),
+        String(v)
+      )
     }
   }
-  return template;
+  return template
 }

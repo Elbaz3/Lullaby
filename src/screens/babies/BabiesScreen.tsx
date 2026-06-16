@@ -1,157 +1,255 @@
-// ─────────────────────────────────────────────
-//  BABIES SCREEN
-//  Shows baby card matching the design mockup:
-//  photo, name, age calculated from DOB
-//  "Add more children" — disabled (coming soon)
-// ─────────────────────────────────────────────
-
-import React, { useEffect } from 'react';
+import React, { useEffect } from 'react'
 import {
-  View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Image, Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useBabyStore } from '../../store/babyStore';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
-import { Baby } from '../../types';
-import { useTranslation } from '../../i18n/useTranslation';
-import { formatListBabyAge } from '../../utils/babyAge';
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Dimensions
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
-const { width } = Dimensions.get('window');
-type Nav = NativeStackNavigationProp<any>;
+// Logic & Theme Imports
+import { useBabyStore } from '../../store/babyStore'
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Spacing,
+  Radius,
+  Shadows
+} from '../../constants/theme'
+import { Baby } from '../../types'
+import { useTranslation } from '../../i18n/useTranslation'
+import { formatListBabyAge } from '../../utils/babyAge'
 
-// ── Baby Card ─────────────────────────────────
-const BabyCard: React.FC<{ baby: Baby; onPress: () => void; t: (k: string, v?: Record<string, string | number>) => string }> = ({ baby, onPress, t }) => {
-  const age = formatListBabyAge(baby.dateBirth, t);
+const { width } = Dimensions.get('window')
+type Nav = NativeStackNavigationProp<any>
+
+// ── Baby Card (UI 1 Layout + Logic 2 Dynamicity) ─────────────────────────────
+const BabyCard: React.FC<{
+  baby: Baby
+  onPress: () => void
+  t: any
+}> = ({ baby, onPress, t }) => {
+  const age = formatListBabyAge(baby.dateBirth, t)
 
   return (
-    <View style={[styles.card, Shadows.md]}>
-      {/* Photo */}
-      <View style={styles.cardPhotoWrap}>
-        {baby.avatar ? (
-          <Image source={{ uri: baby.avatar }} style={styles.cardPhoto} />
-        ) : (
-          <View style={[styles.cardPhotoPlaceholder, { backgroundColor: baby.gender === 'male' ? '#DBEAFE' : '#FCE7F3' }]}>
-            <Text style={styles.cardPhotoEmoji}>{baby.gender === 'male' ? '👦' : '👧'}</Text>
-          </View>
-        )}
+    <View style={[styles.babyCard, Shadows.md]}>
+      <View style={styles.babyLeft}>
+        <View style={styles.avatarWrapper}>
+          {baby.avatar ? (
+            <Image source={{ uri: baby.avatar }} style={styles.avatar} />
+          ) : (
+            <View
+              style={[
+                styles.avatarPlaceholder,
+                {
+                  backgroundColor:
+                    baby.gender === 'male' ? '#DBEAFE' : '#FFE5EC'
+                }
+              ]}
+            >
+              <Text style={{ fontSize: 28 }}>
+                {baby.gender === 'male' ? '👦' : '👧'}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View>
+          <Text style={styles.babyName}>{baby.name}</Text>
+          <Text style={styles.babyAge}>
+            {age} {t('common.old') || 'old'}
+          </Text>
+        </View>
       </View>
 
-      {/* Info */}
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardName}>{baby.name}</Text>
-        <Text style={styles.cardAge}>{age}</Text>
-      </View>
-
-      {/* View Profile */}
       <TouchableOpacity
-        style={styles.viewProfileBtn}
+        style={styles.profileBtn}
         onPress={onPress}
-        activeOpacity={0.85}
+        activeOpacity={0.8}
       >
-        <Text style={styles.viewProfileText}>{t('babies.viewProfile')}</Text>
+        <Text style={styles.profileBtnText}>{t('babies.viewProfile')}</Text>
       </TouchableOpacity>
     </View>
-  );
-};
+  )
+}
 
-// ── Main Screen ───────────────────────────────
+// ── Main Screen (UI 1 Gradient + Logic 2 Fetching) ───────────────────────────
 export const BabiesScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
-  const { t } = useTranslation();
-  const { babies, fetchBabies } = useBabyStore();
+  const navigation = useNavigation<Nav>()
+  const { t } = useTranslation()
+  const { babies, fetchBabies } = useBabyStore()
 
-  useEffect(() => { fetchBabies(); }, []);
+  useEffect(() => {
+    fetchBabies()
+  }, [])
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('babies.myBabies')}</Text>
-      </View>
+    <LinearGradient
+      colors={['#FFE5EC', '#F8C8DC', '#E8B7D4']}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('babies.myBabies')}</Text>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Baby cards */}
+          {babies.map((baby) => (
+            <BabyCard
+              key={baby.id}
+              baby={baby}
+              t={t}
+              onPress={() =>
+                navigation.navigate('BabyDetail', { babyId: baby.id })
+              }
+            />
+          ))}
 
-        {/* Baby cards */}
-        {babies.map(baby => (
-          <BabyCard
-            key={baby.id}
-            baby={baby}
-            t={t}
-            onPress={() => navigation.navigate('BabyDetail', { babyId: baby.id })}
-          />
-        ))}
-
-        {/* Add more children — disabled coming soon */}
-        <TouchableOpacity style={styles.addMoreBtn} disabled activeOpacity={1}>
-          <View style={styles.addMoreLeft}>
-            <View style={styles.addMoreIcon}>
-              <Ionicons name="add" size={22} color={Colors.textMuted} />
+          {/* Add more children — With "Coming Soon" Dynamicity */}
+          <TouchableOpacity
+            style={styles.addMoreBtn}
+            disabled
+            activeOpacity={1}
+          >
+            <View style={styles.addMoreLeft}>
+              <View style={styles.addMoreIcon}>
+                <Ionicons name="add" size={24} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addMoreTitle}>
+                  {t('babies.addAnother')}
+                </Text>
+                <Text style={styles.addMoreSub}>
+                  {t('babies.addAnotherSub')}
+                </Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.addMoreTitle}>{t('babies.addAnother')}</Text>
-              <Text style={styles.addMoreSub}>{t('babies.addAnotherSub')}</Text>
+            <View style={styles.comingSoonTag}>
+              <Text style={styles.comingSoonText}>
+                {t('common.comingSoon')}
+              </Text>
             </View>
-          </View>
-          <View style={styles.comingSoonTag}>
-            <Text style={styles.comingSoonText}>{t('common.comingSoon')}</Text>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <View style={{ height: Spacing.xl }} />
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
+  )
+}
 
 const styles = StyleSheet.create({
-  safe:       { flex: 1, backgroundColor: Colors.bgMain },
-  header:     { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg },
-  headerTitle:{ fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark },
-  container:  { padding: Spacing.xl, gap: Spacing.lg },
+  safe: { flex: 1 },
+  header: {
+    paddingHorizontal: 25,
+    paddingVertical: 20
+  },
+  headerTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: 'bold',
+    color: '#936174'
+  },
+  container: { padding: 20, gap: 15 },
 
-  // Baby card — matches screenshot design
-  card:       {
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing.lg, flexDirection: 'row',
-    alignItems: 'center', gap: Spacing.lg,
+  // Baby Card Styling (Refined Pink UI)
+  babyCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF0F3',
+    padding: 15,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: '#FFD1DC',
+    alignItems: 'center'
   },
-  cardPhotoWrap: {
-    width: 72, height: 72, borderRadius: 36, overflow: 'hidden',
-    borderWidth: 2, borderColor: Colors.primarySoft,
+  babyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarWrapper: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#C07792'
   },
-  cardPhoto:    { width: '100%', height: '100%' },
-  cardPhotoPlaceholder: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
-  cardPhotoEmoji: { fontSize: 32 },
-  cardInfo:     { flex: 1, gap: 4 },
-  cardName:     { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textDark },
-  cardAge:      { fontSize: FontSize.sm, color: Colors.textMuted },
-  viewProfileBtn: {
-    backgroundColor: Colors.primary, borderRadius: Radius.full,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
+  avatar: { width: '100%', height: '100%' },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  viewProfileText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.white },
+  babyName: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: '#4A3B40'
+  },
+  babyAge: { fontSize: FontSize.sm, color: '#9E7A8A' },
+  profileBtn: {
+    backgroundColor: '#C07792',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 15,
+    justifyContent: 'center'
+  },
+  profileBtnText: {
+    color: '#fff',
+    fontWeight: FontWeight.semibold,
+    fontSize: 13
+  },
 
-  // Add more — disabled
-  addMoreBtn:  {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.white, borderRadius: Radius.xl,
-    padding: Spacing.lg, opacity: 0.6,
-    borderWidth: 1.5, borderColor: Colors.border, borderStyle: 'dashed',
+  // Add More Styling
+  addMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: Radius.xl,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#C07792',
+    borderStyle: 'dashed',
+    marginTop: 10
   },
-  addMoreLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  addMoreLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   addMoreIcon: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.bgInput, alignItems: 'center', justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#C07792B2',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  addMoreTitle:    { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.textMedium },
-  addMoreSub:      { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  comingSoonTag:   {
-    backgroundColor: Colors.bgInput, borderRadius: Radius.full,
-    paddingHorizontal: 10, paddingVertical: 4,
+  addMoreTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    color: '#4A3B40'
   },
-  comingSoonText:  { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textMuted },
-});
+  addMoreSub: { fontSize: 11, color: '#7E5D6A', marginTop: 2 },
+  comingSoonTag: {
+    backgroundColor: '#FFFFFF88',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10
+  },
+  comingSoonText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    color: '#936174',
+    textTransform: 'uppercase'
+  }
+})

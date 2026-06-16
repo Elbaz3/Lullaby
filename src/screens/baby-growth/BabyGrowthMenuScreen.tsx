@@ -1,44 +1,57 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react'
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
-} from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import { GrowthScreenShell } from './GrowthScreenShell';
-import { GROWTH_MONTH_BANDS, GROWTH_CATEGORIES, GrowthCategoryId } from './babyGrowthConstants';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
-import { useTranslation } from '../../i18n/useTranslation';
+  Alert
+} from 'react-native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { useNavigation } from '@react-navigation/native'
+import { GrowthScreenShell } from './GrowthScreenShell'
+import {
+  GROWTH_MONTH_BANDS,
+  GROWTH_CATEGORIES,
+  GrowthCategoryId
+} from './babyGrowthConstants'
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Spacing,
+  Radius,
+  Shadows
+} from '../../constants/theme'
+import { useTranslation } from '../../i18n/useTranslation'
 
-type Nav = NativeStackNavigationProp<any>;
+type Nav = NativeStackNavigationProp<any>
 
-export const BabyGrowthMenuScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
-  const { t, isRTL } = useTranslation();
-  const [selectedMonth, setSelectedMonth] = useState(GROWTH_MONTH_BANDS[0].month);
+export const BabyRoutineScreen: React.FC = () => {
+  const navigation = useNavigation<Nav>()
+  const { t, isRTL } = useTranslation()
+  const [selectedMonth, setSelectedMonth] = useState(
+    GROWTH_MONTH_BANDS[0].month
+  )
 
   const openCategory = useCallback(
     (id: GrowthCategoryId) => {
       if (id === 'physical') {
-        navigation.navigate('PhysicalGrowth', { month: selectedMonth });
-        return;
+        navigation.navigate('PhysicalGrowth', { month: selectedMonth })
+        return
       }
       if (id === 'motor') {
-        navigation.navigate('MotorDevelopment', { month: selectedMonth });
-        return;
+        navigation.navigate('MotorDevelopment', { month: selectedMonth })
+        return
       }
       if (id === 'feeding') {
-        navigation.navigate('Feeding', { month: selectedMonth });
-        return;
+        navigation.navigate('Feeding', { month: selectedMonth })
+        return
       }
-      Alert.alert(t('common.comingSoon'), t('common.comingSoonBody'));
+      Alert.alert(t('common.comingSoon'), t('common.comingSoonBody'))
     },
     [navigation, selectedMonth, t]
-  );
+  )
 
   return (
     <GrowthScreenShell scroll>
@@ -53,19 +66,27 @@ export const BabyGrowthMenuScreen: React.FC = () => {
           style={styles.pillsScroll}
         >
           {GROWTH_MONTH_BANDS.map((band) => {
-            const active = band.month === selectedMonth;
+            const active = band.month === selectedMonth
             return (
               <TouchableOpacity
                 key={band.labelKey}
-                style={[styles.pill, active ? styles.pillActive : styles.pillInactive]}
+                style={[
+                  styles.pill,
+                  active ? styles.pillActive : styles.pillInactive
+                ]}
                 onPress={() => setSelectedMonth(band.month)}
                 activeOpacity={0.85}
               >
-                <Text style={[styles.pillText, active ? styles.pillTextActive : styles.pillTextInactive]}>
+                <Text
+                  style={[
+                    styles.pillText,
+                    active ? styles.pillTextActive : styles.pillTextInactive
+                  ]}
+                >
                   {t(band.labelKey)}
                 </Text>
               </TouchableOpacity>
-            );
+            )
           })}
         </ScrollView>
 
@@ -90,8 +111,8 @@ export const BabyGrowthMenuScreen: React.FC = () => {
         </View>
       </>
     </GrowthScreenShell>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   screenTitle: {
@@ -99,34 +120,34 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.textDark,
     marginBottom: Spacing.sm,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.xs
   },
   screenSubtitle: {
     fontSize: FontSize.md,
     color: Colors.textMedium,
     lineHeight: 22,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.lg
   },
   pillsScroll: { marginHorizontal: -Spacing.xl, marginBottom: Spacing.lg },
   pillsRow: {
     paddingHorizontal: Spacing.xl,
     gap: Spacing.sm,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   pill: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
-    borderWidth: 1.5,
+    borderWidth: 1.5
   },
   pillActive: {
     backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    borderColor: Colors.primary
   },
   pillInactive: {
     backgroundColor: Colors.white,
-    borderColor: Colors.primary,
+    borderColor: Colors.primary
   },
   pillText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   pillTextActive: { color: Colors.white },
@@ -138,24 +159,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
-    gap: Spacing.md,
+    gap: Spacing.md
   },
   cardEmoji: { fontSize: 36 },
   cardText: { flex: 1, gap: 4 },
   cardTitle: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.bold,
-    color: Colors.textDark,
+    color: Colors.textDark
   },
   cardDesc: {
     fontSize: FontSize.sm,
     color: Colors.textMedium,
-    lineHeight: 20,
+    lineHeight: 20
   },
   cardChevron: {
     fontSize: 22,
     color: Colors.textMuted,
-    fontWeight: FontWeight.medium,
+    fontWeight: FontWeight.medium
   },
-  cardChevronFlip: { transform: [{ scaleX: -1 }] },
-});
+  cardChevronFlip: { transform: [{ scaleX: -1 }] }
+})

@@ -1,174 +1,360 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MOCK_NOTIFICATIONS } from '../../constants/mockData';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
-import { formatDistanceToNow } from 'date-fns';
-import { enUS, ar as arLocale } from 'date-fns/locale';
-import { useTranslation } from '../../i18n/useTranslation';
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Platform
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { formatDistanceToNow } from 'date-fns'
+import { enUS, ar as arLocale } from 'date-fns/locale'
 
-type Nav = NativeStackNavigationProp<any>;
-type NotifType = 'cry' | 'sensor' | 'report' | 'vaccination' | 'system';
+// Theme & Logic Imports
+import { MOCK_NOTIFICATIONS } from '../../constants/mockData'
+import { Colors, Shadows } from '../../constants/theme'
+import { useTranslation } from '../../i18n/useTranslation'
 
-interface Notification {
-  id: string;
-  type: NotifType;
-  title: string;
-  body: string;
-  timestamp: string;
-  read: boolean;
-}
-
-const NOTIF_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
-  cry:         { icon: 'ear-outline',           color: Colors.warning,  bg: Colors.warningSoft },
-  sensor:      { icon: 'heart-outline',         color: Colors.danger,   bg: Colors.dangerSoft  },
-  report:      { icon: 'bar-chart-outline',     color: Colors.primary,  bg: Colors.primarySoft },
-  vaccination: { icon: 'medical-outline',       color: Colors.success,  bg: Colors.successSoft },
-  system:      { icon: 'notifications-outline', color: Colors.info,     bg: Colors.infoSoft    },
-};
-
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  ...(MOCK_NOTIFICATIONS as Notification[]),
-  {
-    id: 'notif_004', type: 'vaccination',
-    title: 'Vaccination due soon',
-    body: 'Hib (Dose 1) is overdue. Please schedule a visit.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), read: false,
-  },
-  {
-    id: 'notif_005', type: 'sensor',
-    title: 'Temperature normal',
-    body: "Baby's temperature returned to normal range (36.7°C)",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), read: true,
-  },
-  {
-    id: 'notif_006', type: 'report',
-    title: 'Weekly summary ready',
-    body: 'Your weekly health summary is available.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(), read: true,
-  },
-];
+type Nav = NativeStackNavigationProp<any>
 
 export const NotificationsScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
-  const { t, locale } = useTranslation();
-  const dfLocale = locale === 'ar' ? arLocale : enUS;
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const navigation = useNavigation<Nav>()
+  const { t, locale } = useTranslation()
+  const dfLocale = locale === 'ar' ? arLocale : enUS
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const markRead = (id: string) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  const deleteNotif = (id: string) => setNotifications(prev => prev.filter(n => n.id !== id));
-  const filtered = filter === 'all' ? notifications : notifications.filter(n => !n.read);
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
+  const [filter, setFilter] = useState('All')
 
-  const now = new Date();
-  const todayStr = now.toDateString();
-  const yesterdayStr = new Date(now.getTime() - 86400000).toDateString();
-  const groups = [
-    { key: 'today', label: t('notifications.today'), items: filtered.filter(n => new Date(n.timestamp).toDateString() === todayStr) },
-    { key: 'yesterday', label: t('notifications.yesterday'), items: filtered.filter(n => new Date(n.timestamp).toDateString() === yesterdayStr) },
-    { key: 'older', label: t('notifications.older'), items: filtered.filter(n => { const d = new Date(n.timestamp).toDateString(); return d !== todayStr && d !== yesterdayStr; }) },
-  ].filter(g => g.items.length > 0);
+  // Filter labels from UI 1, mapped for translation if available
+  const filters = [
+    'All',
+    'Temperature',
+    'Heart Rate',
+    'breathing',
+    'Crying',
+    'Vaccinations'
+  ]
+
+  const toggleRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n))
+    )
+  }
+
+  const filtered =
+    filter === 'All'
+      ? notifications
+      : notifications.filter((n) =>
+          n.type.toLowerCase().includes(filter.toLowerCase())
+        )
+
+  const getIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'temperature':
+        return 'thermometer-alert'
+      case 'crying':
+        return 'baby-face-outline'
+      case 'vaccinations':
+        return 'needle'
+      case 'heart rate':
+        return 'heart-pulse'
+      case 'breathing':
+        return 'air-filter'
+      default:
+        return 'bell-outline'
+    }
+  }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
+    <View style={styles.flex}>
+      {/* Dynamic Background Gradient */}
+      <LinearGradient
+        colors={['#FFE5EC', '#F8C8DC', '#E8B7D4']}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <SafeAreaView style={styles.flex} edges={['top']}>
+        {/* Back Button */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back" size={20} color="#787777" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllRead}>
-            <Text style={styles.markAllText}>{t('notifications.markAllRead')}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
 
-      <View style={styles.filterRow}>
-        {(['all', 'unread'] as const).map(f => (
-          <TouchableOpacity key={f} style={[styles.filterPill, filter === f && styles.filterPillActive]} onPress={() => setFilter(f)}>
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-              {f === 'all' ? t('notifications.all') : t('notifications.unread', { n: unreadCount })}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🔔</Text>
-            <Text style={styles.emptyTitle}>{t('notifications.emptyTitle')}</Text>
-            <Text style={styles.emptySubtitle}>
-              {t('notifications.emptySub', { filter: filter === 'unread' ? t('notifications.unreadWord') : '' })}
-            </Text>
+        {/* Header Section */}
+        <View style={styles.headerFrame}>
+          <View style={styles.titleRow}>
+            <MaterialCommunityIcons
+              name="bell-outline"
+              size={28}
+              color="#936174"
+            />
+            <Text style={styles.titleText}>{t('notifications.title')}</Text>
           </View>
-        ) : (
-          groups.map(group => (
-            <View key={group.key} style={styles.group}>
-              <Text style={styles.groupLabel}>{group.label}</Text>
-              {group.items.map(notif => {
-                const cfg = NOTIF_CONFIG[notif.type] ?? NOTIF_CONFIG.system;
-                return (
-                  <TouchableOpacity key={notif.id} style={[styles.notifCard, !notif.read && styles.notifCardUnread, Shadows.sm]} onPress={() => markRead(notif.id)} activeOpacity={0.85}>
-                    <View style={[styles.notifIcon, { backgroundColor: cfg.bg }]}>
-                      <Ionicons name={cfg.icon as any} size={20} color={cfg.color} />
-                    </View>
-                    <View style={styles.notifContent}>
-                      <Text style={styles.notifTitle}>{notif.title}</Text>
-                      <Text style={styles.notifBody}>{notif.body}</Text>
-                      <Text style={styles.notifTime}>{formatDistanceToNow(new Date(notif.timestamp), { addSuffix: true, locale: dfLocale })}</Text>
-                    </View>
-                    <View style={styles.notifRight}>
-                      {!notif.read && <View style={styles.unreadDot} />}
-                      <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteNotif(notif.id)}>
-                        <Ionicons name="close" size={16} color={Colors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+          <Text style={styles.subtitleText}>
+            {t('notifications.subtitle') ||
+              'We gently keep you informed about your baby.'}
+          </Text>
+        </View>
+
+        {/* Filters Row */}
+        <View style={styles.filterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            {filters.map((f) => (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setFilter(f)}
+                style={[
+                  styles.filterPillBase,
+                  filter === f
+                    ? styles.filterPillActive
+                    : styles.filterPillInactive
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    { color: filter === f ? '#FFFFFF' : '#936174' }
+                  ]}
+                >
+                  {f === 'All' ? t('notifications.all') : f}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Notifications List */}
+        <ScrollView
+          style={styles.mainScroll}
+          contentContainerStyle={styles.mainScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {filtered.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {t('notifications.emptyTitle')}
+              </Text>
             </View>
-          ))
-        )}
-        <View style={{ height: Spacing.xl }} />
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
+          ) : (
+            filtered.map((notif) => (
+              <View
+                key={notif.id}
+                style={[
+                  styles.notifOuterFrame,
+                  !notif.read && styles.unreadBorder
+                ]}
+              >
+                <View style={styles.notifWhiteCard}>
+                  <View style={styles.iconCircle}>
+                    <MaterialCommunityIcons
+                      name={getIcon(notif.type)}
+                      size={28}
+                      color="#936174"
+                    />
+                  </View>
+                  <View style={styles.notifTextContent}>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.notifTypeTitle}>{notif.type}</Text>
+                      <Text style={styles.timeText}>
+                        {formatDistanceToNow(new Date(notif.timestamp), {
+                          addSuffix: true,
+                          locale: dfLocale
+                        })}
+                      </Text>
+                    </View>
+                    <Text style={styles.notifMainMsg}>{notif.title}</Text>
+                    <Text style={styles.notifSubMsg}>{notif.body}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.actionButtonsRow}>
+                  <TouchableOpacity
+                    style={styles.askAssistantBtn}
+                    onPress={() => navigation.navigate('AssistantScreen')}
+                  >
+                    <Text style={styles.askBtnText}>
+                      {t('notifications.askAssistant') ||
+                        'Ask Baby Care Assistant'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.markSeenBtn,
+                      notif.read && styles.seenBtnActive
+                    ]}
+                    onPress={() => toggleRead(notif.id)}
+                  >
+                    <MaterialCommunityIcons
+                      name={notif.read ? 'eye-check' : 'eye-outline'}
+                      size={15}
+                      color="#936174"
+                    />
+                    <Text style={styles.seenBtnText}>
+                      {notif.read
+                        ? t('notifications.seen')
+                        : t('notifications.markAsSeen')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+          <View style={{ height: 150 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  )
+}
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bgMain },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, gap: Spacing.md },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center', ...Shadows.sm },
-  headerTitle: { flex: 1, fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textDark },
-  markAllText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: FontWeight.medium },
-  filterRow: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md },
-  filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.full, backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
-  filterPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textMedium },
-  filterTextActive: { color: Colors.white },
-  container: { paddingHorizontal: Spacing.xl, gap: Spacing.lg },
-  group: { gap: Spacing.sm },
-  groupLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: Spacing.sm },
-  notifCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: Colors.white, borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.md },
-  notifCardUnread: { borderLeftWidth: 3, borderLeftColor: Colors.primary },
-  notifIcon: { width: 44, height: 44, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
-  notifContent: { flex: 1, gap: 3 },
-  notifTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.textDark },
-  notifBody: { fontSize: FontSize.sm, color: Colors.textMedium, lineHeight: 20 },
-  notifTime: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  notifRight: { alignItems: 'center', gap: Spacing.sm },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  deleteBtn: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', paddingVertical: 80, gap: Spacing.sm },
-  emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textDark },
-  emptySubtitle: { fontSize: FontSize.md, color: Colors.textMuted },
-});
+  flex: { flex: 1 },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    width: 35,
+    height: 35,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D8DADC',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99
+  },
+  headerFrame: {
+    marginTop: 110,
+    paddingHorizontal: 30
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8
+  },
+  titleText: {
+    fontWeight: '600',
+    fontSize: 22,
+    color: '#936174'
+  },
+  subtitleText: {
+    fontWeight: '500',
+    fontSize: 13,
+    color: '#737373',
+    lineHeight: 18
+  },
+  filterContainer: { marginTop: 25, height: 40 },
+  filterScroll: { paddingHorizontal: 30, gap: 10 },
+  filterPillBase: {
+    paddingHorizontal: 20,
+    height: 37,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  filterPillActive: { backgroundColor: '#C07792' },
+  filterPillInactive: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#C07792'
+  },
+  filterPillText: { fontSize: 14, fontWeight: '500' },
+
+  mainScroll: { marginTop: 20, flex: 1 },
+  mainScrollContent: { paddingHorizontal: 21, gap: 18 },
+  emptyContainer: { flex: 1, alignItems: 'center', marginTop: 100 },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#936174',
+    opacity: 0.6
+  },
+
+  notifOuterFrame: {
+    width: '100%',
+    borderRadius: 20,
+    padding: 9,
+    backgroundColor: '#C0779244', // Semi-transparent pink
+    gap: 12
+  },
+  unreadBorder: {
+    backgroundColor: '#C0779288' // Darker when unread
+  },
+  notifWhiteCard: {
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 18,
+    flexDirection: 'row',
+    gap: 12
+  },
+  iconCircle: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: '#FDF2F5',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  notifTextContent: { flex: 1, gap: 4 },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  notifTypeTitle: {
+    fontWeight: '700',
+    fontSize: 13,
+    color: '#936174',
+    textTransform: 'uppercase'
+  },
+  timeText: { fontSize: 10, color: '#9E7A8A' },
+  notifMainMsg: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#000000',
+    marginTop: 2
+  },
+  notifSubMsg: {
+    fontWeight: '400',
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 16
+  },
+
+  actionButtonsRow: { flexDirection: 'row', gap: 8 },
+  askAssistantBtn: {
+    flex: 1.4,
+    height: 37,
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.sm
+  },
+  askBtnText: { fontSize: 10, fontWeight: '600', color: '#936174' },
+  markSeenBtn: {
+    flex: 1,
+    height: 37,
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+    ...Shadows.sm
+  },
+  seenBtnActive: { backgroundColor: '#FFFFFFA6', opacity: 0.7 },
+  seenBtnText: { fontSize: 10, fontWeight: '600', color: '#936174' }
+})

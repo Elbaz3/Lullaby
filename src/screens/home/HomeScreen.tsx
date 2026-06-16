@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -7,499 +7,481 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useAuthStore } from "../../store/authStore";
-import { useBabyStore } from '../../store/babyStore';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
-import { SensorCard } from '../../components/SensorCard';
-import { CryReasonCard } from '../../components/CryReasonCard';
-import { BabyAvatar } from '../../components/BabyAvatar';
-import { Card, SectionHeader, Badge } from '../../components/ui/Card';
-import { cryService } from '../../services/cry.service';
-import { useTranslation } from '../../i18n/useTranslation';
-import { formatBabyAge } from '../../utils/babyAge';
+  Dimensions
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+
+// Store & Service Imports
+import { useAuthStore } from '../../store/authStore'
+import { useBabyStore } from '../../store/babyStore'
+import { cryService } from '../../services/cry.service'
+import { Shadows } from '../../constants/theme'
+
+// Asset Imports (Based on your second code)
+import BreathIcon from '../../../assets/icons/breath.png'
+import TempIcon from '../../../assets/icons/temp.png'
+import HeartIcon from '../../../assets/icons/heart.png'
+import BabyIcon from '../../../assets/icons/baby.png'
+import AlarmIcon from '../../../assets/icons/alarm.png'
+import NewBornIcon from '../../../assets/icons/new-born.png'
+import RateIcon from '../../../assets/icons/rate.png'
+
+const { width } = Dimensions.get('window')
+const COLUMN_WIDTH = (width - 45) / 2
 
 export const HomeScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { t, isRTL } = useTranslation();
-  const { user } = useAuthStore();
+  const navigation = useNavigation<NativeStackNavigationProp<any>>()
+  const { user } = useAuthStore()
   const {
-    babies,
     activeBaby,
     activeBabyId,
-    setActiveBaby,
     fetchBabies,
     fetchLiveData,
     latestReading,
-    latestCryEvent,
-    isFetchingLive,
-  } = useBabyStore();
+    latestCryEvent
+  } = useBabyStore()
 
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false)
+
+  // Logic: Calculate Age (Months/Weeks style)
+  const formatAge = (iso: string) => {
+    if (!iso) return ''
+    const birth = new Date(iso)
+    const now = new Date()
+    const diffTime = Math.abs(now.getTime() - birth.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 7) return `${diffDays} Days`
+    const weeks = Math.floor(diffDays / 7)
+    const months = Math.floor(diffDays / 30.44)
+
+    if (months === 0) return `${weeks} Weeks`
+    return `${months} Months, ${weeks % 4} Weeks`
+  }
 
   const load = useCallback(async () => {
-    await fetchBabies();
-  }, []);
+    await fetchBabies()
+  }, [fetchBabies])
 
   useEffect(() => {
-    load();
-  }, []);
+    load()
+  }, [load])
 
   useEffect(() => {
     if (activeBabyId) {
-      fetchLiveData(activeBabyId);
-      // Poll every 30 seconds
-      const interval = setInterval(() => fetchLiveData(activeBabyId), 30000);
-      return () => clearInterval(interval);
+      fetchLiveData(activeBabyId)
+      const interval = setInterval(() => fetchLiveData(activeBabyId), 30000)
+      return () => clearInterval(interval)
     }
-  }, [activeBabyId]);
+  }, [activeBabyId, fetchLiveData])
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await load();
-    if (activeBabyId) await fetchLiveData(activeBabyId);
-    setRefreshing(false);
-  };
+    setRefreshing(true)
+    await load()
+    if (activeBabyId) await fetchLiveData(activeBabyId)
+    setRefreshing(false)
+  }
 
-  const firstName = (user?.name ?? user?.fullName ?? t('home.parent')).split(' ')[0];
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? t('home.goodMorning') : hour < 17 ? t('home.goodAfternoon') : t('home.goodEvening');
-
-  const aqiStatus = latestReading?.airQuality.status ?? 'good';
-  const aqiPalette: Record<string, string> = {
-    good: Colors.success,
-    moderate: Colors.warning,
-    poor: Colors.danger,
-    hazardous: Colors.danger,
-  };
-  const aqiColor = aqiPalette[aqiStatus] ?? Colors.success;
-
+  const firstName = (user?.name ?? user?.fullName ?? 'Parent').split(' ')[0]
   const latestCryMeta = latestCryEvent
     ? cryService.getCryReasonMeta(latestCryEvent.reason)
-    : null;
+    : null
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{greeting} 👋</Text>
-            <Text style={styles.name}>
-              {t('home.hi')}
-              {firstName}
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("Notifications")}>
-            <Ionicons name="notifications-outline" size={24} color={Colors.textDark} />
-            <View style={[styles.notifBadge, isRTL ? styles.notifBadgeRTL : styles.notifBadgeLTR]} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Baby Card — matches design mockup */}
-        {activeBaby && (
-          <View style={[styles.babyCard, Shadows.md]}>
-            <View style={styles.babyCardLeft}>
-              {/* Photo */}
-              <View style={styles.babyCardPhotoWrap}>
-                {activeBaby.avatar ? (
-                  <Image source={{ uri: activeBaby.avatar }} style={styles.babyCardPhoto} />
-                ) : (
-                  <View style={[styles.babyCardPhotoPlaceholder, { backgroundColor: activeBaby.gender === 'male' ? '#DBEAFE' : '#FCE7F3' }]}>
-                    <Text style={styles.babyCardEmoji}>{activeBaby.gender === 'male' ? '👦' : '👧'}</Text>
-                  </View>
-                )}
-              </View>
-              {/* Info */}
-              <View style={styles.babyCardInfo}>
-                <Text style={styles.babyCardName}>{activeBaby.name}</Text>
-                <Text style={styles.babyCardAge}>{formatBabyAge(activeBaby.dateBirth, t)}</Text>
-              </View>
+    <LinearGradient
+      colors={['#FDF2F4', '#F9E7ED', '#FDF2F4']}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#C07792"
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.welcomeBack}>Hello,</Text>
+              <Text style={styles.name}>{firstName}</Text>
             </View>
-            {/* View Profile */}
             <TouchableOpacity
-              style={styles.viewProfileBtn}
-              onPress={() => navigation.navigate('Babies')}
-              activeOpacity={0.85}
+              style={styles.notifBtn}
+              onPress={() => navigation.navigate('Notifications')}
             >
-              <Text style={styles.viewProfileText}>{t('home.viewProfile')}</Text>
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color="#C07792"
+              />
+              <View style={styles.notifBadge} />
             </TouchableOpacity>
           </View>
-        )}
 
-        {/* Baby growth & development */}
-        <TouchableOpacity
-          style={[styles.growthCard, Shadows.md]}
-          onPress={() => navigation.navigate('BabyGrowthMenu')}
-          activeOpacity={0.9}
-        >
-          <View style={styles.growthIconWrap}>
-            <Text style={styles.growthEmoji}>📈</Text>
-          </View>
-          <View style={styles.growthText}>
-            <Text style={styles.growthTitle}>{t('home.growthTitle')}</Text>
-            <Text style={styles.growthSub}>{t('home.growthSub')}</Text>
-          </View>
-          <View style={isRTL ? styles.chevronFlip : undefined}>
-            <Ionicons name="chevron-forward" size={22} color={Colors.textMuted} />
-          </View>
-        </TouchableOpacity>
-
-        {/* Status Banner */}
-        {activeBaby && (
-          <View style={[styles.statusBanner, Shadows.md]}>
-            <View style={styles.statusLeft}>
-              <View style={styles.liveDot} />
-              <Text style={styles.statusLabel}>{t('home.liveMonitoring')}</Text>
-            </View>
-            <Badge
-              label={activeBaby.deviceId ? t('home.badgeConnected') : t('home.badgeNoDevice')}
-              variant={activeBaby.deviceId ? 'success' : 'neutral'}
-            />
-          </View>
-        )}
-
-        {/* Cry Alert */}
-        {latestCryEvent && latestCryMeta && (
-          <View
-            style={[
-              styles.cryAlert,
-              { borderStartWidth: 4, borderStartColor: latestCryMeta.color },
-            ]}
-          >
-            <Text style={styles.cryAlertEmoji}>{latestCryMeta.emoji}</Text>
-            <View style={styles.cryAlertText}>
-              <Text style={styles.cryAlertTitle}>
-                {t('home.cryMightBe', { reason: latestCryMeta.label.toLowerCase() })}
-              </Text>
-              <Text style={styles.cryAlertSub}>{latestCryMeta.suggestion}</Text>
-            </View>
-            <View style={[styles.cryConfBadge, { backgroundColor: latestCryMeta.color + '20' }]}>
-              <Text style={[styles.cryConf, { color: latestCryMeta.color }]}>
-                {latestCryEvent.confidence}%
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Sensor Cards Grid */}
-        {latestReading && (
-          <>
-            <SectionHeader title={t('home.vitals')} action={t('home.history')} />
-            <View style={styles.sensorGrid}>
-              <SensorCard
-                label={t('home.bodyTemp')}
-                value={latestReading.temperature.toFixed(1)}
-                unit="°C"
-                icon="thermometer-outline"
-                bgColor={Colors.tempCard}
-                iconColor="#FF7043"
-                status={latestReading.temperature > 37.5 ? 'warning' : 'normal'}
-                subtitle={latestReading.temperature > 37.5 ? t('home.slightlyElevated') : t('home.normalRange')}
-              />
-              <SensorCard
-                label={t('home.heartRate')}
-                value={latestReading.heartRate}
-                unit="bpm"
-                icon="heart-outline"
-                bgColor={Colors.heartCard}
-                iconColor="#E91E63"
-                status={latestReading.heartRate > 160 ? 'warning' : 'normal'}
-                subtitle={latestReading.heartRate > 160 ? t('home.high') : t('home.normal')}
-              />
-            </View>
-            <View style={styles.sensorGrid}>
-              <SensorCard
-                label={t('home.breathing')}
-                value={latestReading.breathingRate}
-                unit="/min"
-                icon="water-outline"
-                bgColor={Colors.breathCard}
-                iconColor="#4CAF50"
-                status="normal"
-                subtitle={t('home.steadyRhythm')}
-              />
-              <SensorCard
-                label={t('home.spo2')}
-                value={latestReading.oxygenLevel}
-                unit="%"
-                icon="pulse-outline"
-                bgColor={Colors.airCard}
-                iconColor="#03A9F4"
-                status={latestReading.oxygenLevel < 95 ? 'warning' : 'normal'}
-                subtitle={latestReading.oxygenLevel >= 95 ? t('home.optimal') : t('home.checkNeeded')}
-              />
-            </View>
-
-            {/* Air Quality */}
-            <SectionHeader title={t('home.airQuality')} />
-            <Card style={styles.airCard}>
-              <View style={styles.airTop}>
-                <View>
-                  <Text style={styles.aqiValue}>{latestReading.airQuality.aqi}</Text>
-                  <Text style={styles.aqiLabel}>{t('home.airQualityIndex')}</Text>
-                </View>
-                <Badge
-                  label={aqiStatus.toUpperCase()}
-                  variant={aqiStatus === 'good' ? 'success' : aqiStatus === 'moderate' ? 'warning' : 'danger'}
+          {/* Baby Card */}
+          {activeBaby && (
+            <View style={[styles.topBabyCard, Shadows.sm]}>
+              {activeBaby.avatar ? (
+                <Image
+                  source={{ uri: activeBaby.avatar }}
+                  style={styles.profileImg}
                 />
+              ) : (
+                <View
+                  style={[
+                    styles.profileImg,
+                    {
+                      backgroundColor: '#FFE5EC',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="baby-face-outline"
+                    size={40}
+                    color="#C07792"
+                  />
+                </View>
+              )}
+              <View style={styles.babyInfo}>
+                <Text style={styles.babyName}>{activeBaby.name}</Text>
+                <Text style={styles.babyAge}>
+                  {formatAge(activeBaby.dateBirth)} old
+                </Text>
+                <TouchableOpacity
+                  style={styles.profileBtn}
+                  onPress={() =>
+                    navigation.navigate('BabyDetail', {
+                      babyId: activeBaby._id
+                    })
+                  }
+                >
+                  <Text style={styles.profileBtnText}>View Profile</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.airRow}>
-                <AirMetric icon="water-outline" label={t('home.humidity')} value={`${latestReading.airQuality.humidity}%`} />
-                <AirMetric icon="thermometer-outline" label={t('home.roomTemp')} value={`${latestReading.airQuality.temperature}°C`} />
-                <AirMetric icon="cloud-outline" label={t('home.co2')} value={`${latestReading.airQuality.co2}ppm`} />
-              </View>
-            </Card>
-          </>
-        )}
+            </View>
+          )}
 
-        {/* No babies state */}
-        {babies.length === 0 && !isFetchingLive && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>👶</Text>
-            <Text style={styles.emptyTitle}>{t('home.noBabyTitle')}</Text>
-            <Text style={styles.emptySubtitle}>{t('home.noBabySubtitle')}</Text>
+          {/* Staggered Grid */}
+          <View style={styles.grid}>
+            {/* LEFT COLUMN */}
+            <View style={styles.column}>
+              {/* Temperature */}
+              <TouchableOpacity
+                style={[styles.card, { backgroundColor: '#5DADE2' }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cardLabel}>Temperature</Text>
+                <View style={styles.cardRow}>
+                  <Image source={TempIcon} style={styles.cardIconSmall} />
+                  <Text style={styles.cardValue}>
+                    {latestReading?.temperature.toFixed(1) ?? '--'}°C
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Breathing */}
+              <TouchableOpacity
+                style={[styles.card, { backgroundColor: '#D2B4DE' }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cardLabel}>Breathing</Text>
+                <View style={styles.cardRow}>
+                  <Image source={BreathIcon} style={styles.cardIconSmall} />
+                  <Text style={styles.cardValue}>
+                    {latestReading?.breathingRate ?? '--'} rpm
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Vaccinations (Tall) */}
+              <TouchableOpacity
+                style={[
+                  styles.card,
+                  styles.tallCard,
+                  { backgroundColor: '#AED6F1' }
+                ]}
+                onPress={() => navigation.navigate('Vaccination')}
+              >
+                <Image source={AlarmIcon} style={styles.cardIconSmall} />
+                <Text style={styles.tallCardTitle}>Vaccines</Text>
+                <Text style={styles.tallCardSub}>
+                  Schedule and upcoming dates.
+                </Text>
+                <View style={styles.circleBtn}>
+                  <Ionicons name="chevron-forward" size={16} color="#3498DB" />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* RIGHT COLUMN */}
+            <View style={styles.column}>
+              {/* Heart Rate */}
+              <TouchableOpacity
+                style={[styles.card, { backgroundColor: '#EBADBD' }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cardLabel}>Heart Rate</Text>
+                <View style={styles.cardRow}>
+                  <Image source={HeartIcon} style={styles.cardIconSmall} />
+                  <Text style={styles.cardValue}>
+                    {latestReading?.heartRate ?? '--'} bpm
+                  </Text>
+                </View>
+                <Image source={RateIcon} style={styles.pulseGraph} />
+              </TouchableOpacity>
+
+              {/* Child's Routine (Tall) */}
+              <TouchableOpacity
+                style={[
+                  styles.card,
+                  styles.tallCard,
+                  { backgroundColor: '#F5CBA7' }
+                ]}
+                onPress={() => navigation.navigate('BabyRoutine')}
+              >
+                <Image source={BabyIcon} style={styles.cardIconSmall} />
+                <Text style={styles.tallCardTitle}>Routine</Text>
+                <Text style={styles.tallCardSub}>
+                  Daily habits & growth support.
+                </Text>
+                <View style={styles.circleBtn}>
+                  <Ionicons name="chevron-forward" size={16} color="#E67E22" />
+                </View>
+              </TouchableOpacity>
+
+              {/* Crying Detection */}
+              <TouchableOpacity
+                style={[styles.card, { backgroundColor: '#F1948A' }]}
+                onPress={() => navigation.navigate('CryDetection')}
+              >
+                <View style={styles.cryHeader}>
+                  <Text style={styles.cardLabel}>Cry Analysis</Text>
+                  <Image source={NewBornIcon} style={styles.cardIconSmall} />
+                </View>
+                <Text style={styles.smallSub}>
+                  {latestCryMeta
+                    ? `Likely ${latestCryMeta.label}`
+                    : 'Monitoring...'}
+                </Text>
+                <View style={styles.circleBtn}>
+                  <Ionicons name="mic" size={14} color="#F1948A" />
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
-        )}
 
-        <View style={{ height: Spacing.xl }} />
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
+          {/* Air Quality (Full Width Bottom Card) */}
+          {latestReading?.airQuality && (
+            <View style={styles.airSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Room Environment</Text>
+                <View
+                  style={[
+                    styles.aqiBadge,
+                    {
+                      backgroundColor:
+                        latestReading.airQuality.aqi < 50
+                          ? '#E8F5E9'
+                          : '#FFF3E0'
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.aqiBadgeText,
+                      {
+                        color:
+                          latestReading.airQuality.aqi < 50
+                            ? '#4CAF50'
+                            : '#FF9800'
+                      }
+                    ]}
+                  >
+                    {latestReading.airQuality.status?.toUpperCase() || 'GOOD'}
+                  </Text>
+                </View>
+              </View>
 
-const AirMetric: React.FC<{ icon: string; label: string; value: string }> = ({
-  icon, label, value,
-}) => (
-  <View style={airMetricStyles.container}>
-    <Ionicons name={icon as any} size={16} color={Colors.textMuted} />
-    <Text style={airMetricStyles.value}>{value}</Text>
-    <Text style={airMetricStyles.label}>{label}</Text>
+              <View style={[styles.airCard, Shadows.sm]}>
+                <View style={styles.airMain}>
+                  <Text style={styles.aqiValue}>
+                    {latestReading.airQuality.aqi}
+                  </Text>
+                  <Text style={styles.aqiLabel}>Air Quality Index</Text>
+                </View>
+                <View style={styles.airDivider} />
+                <View style={styles.airMetricsRow}>
+                  <AirMetric
+                    icon="water-outline"
+                    label="Humidity"
+                    value={`${latestReading.airQuality.humidity}%`}
+                  />
+                  <AirMetric
+                    icon="thermometer-outline"
+                    label="Room Temp"
+                    value={`${latestReading.airQuality.temperature}°C`}
+                  />
+                  <AirMetric
+                    icon="cloud-outline"
+                    label="CO2"
+                    value={`${latestReading.airQuality.co2}ppm`}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
+  )
+}
+
+const AirMetric = ({ icon, label, value }: any) => (
+  <View style={styles.airMetricItem}>
+    <Ionicons name={icon} size={18} color="#C07792" />
+    <Text style={styles.airMetricValue}>{value}</Text>
+    <Text style={styles.airMetricLabel}>{label}</Text>
   </View>
-);
-
-const airMetricStyles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', gap: 2 },
-  value: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.textDark },
-  label: { fontSize: FontSize.xs, color: Colors.textMuted },
-});
+)
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bgMain },
-  scroll: { flex: 1 },
-  container: {
-    padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
+  container: { padding: 15 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.sm,
-  },
-  greeting: { fontSize: FontSize.md, color: Colors.textMuted },
-  name: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark },
-  headerRight: { flexDirection: 'row', gap: Spacing.sm },
-  iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: Colors.white,
     alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.sm,
+    marginBottom: 20
+  },
+  welcomeBack: { color: '#9E7A8A', fontSize: 16, fontWeight: '500' },
+  name: { fontSize: 28, fontWeight: 'bold', color: '#4A3B40' },
+  notifBtn: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 15,
+    elevation: 2
   },
   notifBadge: {
     position: 'absolute',
-    top: 10,
-    width: 8,
-    height: 8,
+    top: 11,
+    right: 13,
+    width: 7,
+    height: 7,
     borderRadius: 4,
-    backgroundColor: Colors.danger,
-    borderWidth: 1.5,
-    borderColor: Colors.white,
-  },
-  notifBadgeLTR: { right: 10 },
-  notifBadgeRTL: { left: 10 },
-  babySelector: {
-    gap: Spacing.md,
-    paddingBottom: Spacing.xs,
-  },
-  babySelectorItem: {
-    alignItems: 'center',
-    gap: 6,
-    padding: Spacing.sm,
-    borderRadius: Radius.xl,
-    minWidth: 72,
-  },
-  babySelectorItemActive: {
-    backgroundColor: Colors.primarySoft,
-  },
-  babySelectorName: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    fontWeight: FontWeight.medium,
-  },
-  babySelectorNameActive: {
-    color: Colors.primary,
-    fontWeight: FontWeight.semibold,
-  },
-  statusBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-  },
-  statusLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.success,
-  },
-  statusLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    color: Colors.textDark,
-  },
-  cryAlert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    ...Shadows.sm,
-  },
-  chevronFlip: { transform: [{ scaleX: -1 }] },
-  cryAlertEmoji: { fontSize: 32 },
-  cryAlertText: { flex: 1, gap: 2 },
-  cryAlertTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textDark,
-  },
-  cryAlertSub: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    lineHeight: 18,
-  },
-  cryConfBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: Radius.md,
-  },
-  cryConf: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-  },
-  sensorGrid: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-  },
-  airCard: {
-    gap: Spacing.lg,
-  },
-  airTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  aqiValue: {
-    fontSize: FontSize.xxxl,
-    fontWeight: FontWeight.extrabold,
-    color: Colors.textDark,
-  },
-  aqiLabel: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  airRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.divider,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: Spacing.huge,
-    gap: Spacing.sm,
-  },
-  emptyEmoji: { fontSize: 56 },
-  emptyTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
-    color: Colors.textDark,
-  },
-  emptySubtitle: {
-    fontSize: FontSize.md,
-    color: Colors.textMuted,
-    textAlign: 'center',
+    backgroundColor: '#C07792',
+    borderWidth: 1,
+    borderColor: '#fff'
   },
 
-  // ── New Baby Card ─────────────────────────
-  babyCard: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
+  topBabyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderColor: Colors.primarySoft,
+    marginBottom: 20
   },
-  babyCardLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
-  babyCardPhotoWrap: {
-    width: 72, height: 72, borderRadius: 36,
-    overflow: 'hidden', borderWidth: 2, borderColor: Colors.primarySoft,
+  profileImg: { width: 85, height: 85, borderRadius: 42.5, overflow: 'hidden' },
+  babyInfo: { marginLeft: 15, flex: 1 },
+  babyName: { fontSize: 20, fontWeight: 'bold', color: '#4A3B40' },
+  babyAge: { fontSize: 14, color: '#9E7A8A', marginVertical: 4 },
+  profileBtn: {
+    backgroundColor: '#C07792',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    alignSelf: 'flex-end',
+    marginTop: 5
   },
-  babyCardPhoto:            { width: '100%', height: '100%' },
-  babyCardPhotoPlaceholder: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
-  babyCardEmoji:            { fontSize: 32 },
-  babyCardInfo:             { gap: 4 },
-  babyCardName:             { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textDark },
-  babyCardAge:              { fontSize: FontSize.sm, color: Colors.textMuted },
-  viewProfileBtn: {
-    backgroundColor: Colors.primary, borderRadius: Radius.full,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
-  },
-  viewProfileText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.white },
+  profileBtnText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
 
-  growthCard: {
+  grid: { flexDirection: 'row', justifyContent: 'space-between' },
+  column: { width: COLUMN_WIDTH, gap: 15 },
+  card: {
+    borderRadius: 25,
+    padding: 18,
+    minHeight: 120,
+    justifyContent: 'center'
+  },
+  tallCard: { height: 210 },
+  cardIconSmall: { width: 35, height: 35, resizeMode: 'contain' },
+  cardLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 8
+  },
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    borderWidth: 1.5,
-    borderColor: Colors.primarySoft,
+    justifyContent: 'space-between'
   },
-  growthIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primarySoft,
+  cardValue: { fontSize: 18, fontWeight: 'bold', color: '#FFF' },
+  pulseGraph: {
+    width: '100%',
+    height: 100,
+    resizeMode: 'contain',
+    marginTop: 10
+  },
+  tallCardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginTop: 12
+  },
+  tallCardSub: { fontSize: 12, color: '#FFF', marginTop: 5, opacity: 0.9 },
+  cryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  smallSub: { fontSize: 12, color: '#FFF', marginTop: 5, fontStyle: 'italic' },
+  circleBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'absolute',
+    bottom: 15,
+    right: 15
   },
-  growthEmoji: { fontSize: 24 },
-  growthText: { flex: 1, gap: 2 },
-  growthTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.textDark },
-  growthSub: { fontSize: FontSize.sm, color: Colors.textMuted },
-});
+
+  airSection: { marginTop: 25 },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#4A3B40' },
+  aqiBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  aqiBadgeText: { fontSize: 11, fontWeight: '800' },
+  airCard: { backgroundColor: '#fff', borderRadius: 25, padding: 20 },
+  airMain: { alignItems: 'center', marginBottom: 15 },
+  aqiValue: { fontSize: 40, fontWeight: 'bold', color: '#4A3B40' },
+  aqiLabel: { fontSize: 12, color: '#9E7A8A' },
+  airDivider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 15 },
+  airMetricsRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  airMetricItem: { alignItems: 'center' },
+  airMetricValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4A3B40',
+    marginTop: 5
+  },
+  airMetricLabel: { fontSize: 10, color: '#9E7A8A' }
+})
