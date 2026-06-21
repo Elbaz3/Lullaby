@@ -5,7 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert
+  Alert,
+  Image
 } from 'react-native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useNavigation } from '@react-navigation/native'
@@ -24,6 +25,13 @@ import {
   Shadows
 } from '../../constants/theme'
 import { useTranslation } from '../../i18n/useTranslation'
+
+// Map category IDs to specific illustration assets to match the screenshot
+const CATEGORY_IMAGES: Record<string, any> = {
+  physical: require('../../../assets/illustrations/growth_physical.png'),
+  motor: require('../../../assets/illustrations/growth_motor.png'),
+  feeding: require('../../../assets/illustrations/growth_feeding.png')
+}
 
 type Nav = NativeStackNavigationProp<any>
 
@@ -55,10 +63,12 @@ export const BabyRoutineScreen: React.FC = () => {
 
   return (
     <GrowthScreenShell scroll>
-      <>
+      <View style={styles.container}>
+        {/* Title Section */}
         <Text style={styles.screenTitle}>{t('growth.screenTitle')}</Text>
         <Text style={styles.screenSubtitle}>{t('growth.screenSubtitle')}</Text>
 
+        {/* Month Selector Pills */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -90,6 +100,7 @@ export const BabyRoutineScreen: React.FC = () => {
           })}
         </ScrollView>
 
+        {/* Category Cards */}
         <View style={styles.cards}>
           {GROWTH_CATEGORIES.map((cat) => (
             <TouchableOpacity
@@ -98,85 +109,112 @@ export const BabyRoutineScreen: React.FC = () => {
               onPress={() => openCategory(cat.id)}
               activeOpacity={0.9}
             >
-              <Text style={styles.cardEmoji}>{cat.emoji}</Text>
+              {/* Illustration Image */}
+              <View style={styles.imageContainer}>
+                <Image
+                  source={CATEGORY_IMAGES[cat.id]}
+                  style={styles.illustration}
+                  resizeMode="contain"
+                />
+              </View>
+
               <View style={styles.cardText}>
                 <Text style={styles.cardTitle}>{t(cat.titleKey)}</Text>
-                <Text style={styles.cardDesc}>{t(cat.descKey)}</Text>
-              </View>
-              <View style={isRTL ? styles.cardChevronFlip : undefined}>
-                <Text style={styles.cardChevron}>›</Text>
+                <Text style={styles.cardDesc} numberOfLines={2}>
+                  {t(cat.descKey)}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
-      </>
+      </View>
     </GrowthScreenShell>
   )
 }
 
 const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: Spacing.sm
+  },
   screenTitle: {
-    fontSize: FontSize.xxl,
-    fontWeight: FontWeight.bold,
-    color: Colors.textDark,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.xs
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#936174', // Dusty Rose from screenshot
+    marginBottom: 10,
+    textAlign: 'left'
   },
   screenSubtitle: {
-    fontSize: FontSize.md,
-    color: Colors.textMedium,
-    lineHeight: 22,
-    marginBottom: Spacing.lg
+    fontSize: 14,
+    color: '#797979', // Gray from screenshot
+    lineHeight: 20,
+    marginBottom: 25,
+    textAlign: 'left'
   },
-  pillsScroll: { marginHorizontal: -Spacing.xl, marginBottom: Spacing.lg },
+  pillsScroll: {
+    marginHorizontal: -Spacing.xl,
+    marginBottom: 30
+  },
   pillsRow: {
     paddingHorizontal: Spacing.xl,
-    gap: Spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center'
+    gap: 12
   },
   pill: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.full,
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 12, // More squared-round like the image
     borderWidth: 1.5
   },
   pillActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary
+    backgroundColor: '#C07792', // Darker rose
+    borderColor: '#C07792'
   },
   pillInactive: {
     backgroundColor: Colors.white,
-    borderColor: Colors.primary
+    borderColor: '#C07792'
   },
-  pillText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  pillTextActive: { color: Colors.white },
-  pillTextInactive: { color: Colors.primary },
-  cards: { gap: Spacing.md },
+  pillText: {
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  pillTextActive: {
+    color: Colors.white
+  },
+  pillTextInactive: {
+    color: '#C07792'
+  },
+  cards: {
+    gap: 20
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.md
+    borderRadius: 25, // Large rounded corners from screenshot
+    padding: 20,
+    gap: 15
   },
-  cardEmoji: { fontSize: 36 },
-  cardText: { flex: 1, gap: 4 },
+  imageContainer: {
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  illustration: {
+    width: '100%',
+    height: '100%'
+  },
+  cardText: {
+    flex: 1,
+    gap: 4
+  },
   cardTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-    color: Colors.textDark
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#936174' // Dusty Rose
   },
   cardDesc: {
-    fontSize: FontSize.sm,
-    color: Colors.textMedium,
-    lineHeight: 20
-  },
-  cardChevron: {
-    fontSize: 22,
-    color: Colors.textMuted,
-    fontWeight: FontWeight.medium
-  },
-  cardChevronFlip: { transform: [{ scaleX: -1 }] }
+    fontSize: 12,
+    color: '#797979',
+    lineHeight: 18
+  }
 })

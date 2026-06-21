@@ -204,34 +204,6 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Device */}
-          {/* <View style={styles.section}>
-            <Text style={sectionTitleStyle}>{t('settings.device')}</Text>
-            <View style={styles.sectionCard}>
-              <SettingRow
-                icon="bluetooth-outline"
-                label={t('settings.pairNewDevice')}
-                onPress={() => {}}
-                isRTL={isRTL}
-              />
-              <View style={styles.rowDivider} />
-              <SettingRow
-                icon="wifi-outline"
-                label={t('settings.connectionStatus')}
-                value={t('settings.connected')}
-                onPress={() => {}}
-                isRTL={isRTL}
-              />
-              <View style={styles.rowDivider} />
-              <SettingRow
-                icon="battery-half-outline"
-                label={t('settings.deviceBattery')}
-                value="82%"
-                isRTL={isRTL}
-              />
-            </View>
-          </View> */}
-
           {/* App */}
           <View style={styles.section}>
             <Text style={sectionTitleStyle}>{t('settings.app')}</Text>

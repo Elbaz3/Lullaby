@@ -1,120 +1,124 @@
-// ─────────────────────────────────────────────
-//  OTP VERIFICATION SCREEN
-//
-//  Used for two flows:
-//  1. After register  → reason = "verify"
-//  2. Forgot password → reason = "reset"
-//
-//  Params received via navigation:
-//  { identifier, reason, mode }
-// ─────────────────────────────────────────────
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuthStore } from '../../store/authStore';
-import { Button } from '../../components/ui/Button';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
-import { useTranslation } from '../../i18n/useTranslation';
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
-type Nav = NativeStackNavigationProp<any>;
+// Logic & Theme Imports
+import { useAuthStore } from '../../store/authStore'
+import { useTranslation } from '../../i18n/useTranslation'
+import { Colors, Shadows, Radius } from '../../constants/theme'
+
+type Nav = NativeStackNavigationProp<any>
 type Params = {
   OTPVerification: {
-    identifier: string;     // email or phone — sent to backend
-    reason:     'verify' | 'reset';
-    mode:       'register' | 'forgot'; // for UI text only
-  };
-};
+    identifier: string // email or phone
+    reason: 'verify' | 'reset'
+    mode: 'register' | 'forgot'
+  }
+}
 
-const OTP_LENGTH  = 6;
-const RESEND_SECS = 60;
+const OTP_LENGTH = 6 // Set to 6 as requested
+const RESEND_SECS = 60
 
 export const OTPVerificationScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
-  const route      = useRoute<RouteProp<Params, 'OTPVerification'>>();
-  const { identifier, reason } = route.params;
-  const { t } = useTranslation();
+  const navigation = useNavigation<Nav>()
+  const route = useRoute<RouteProp<Params, 'OTPVerification'>>()
+  const { identifier, reason } = route.params
+  const { t } = useTranslation()
 
-  const { verifyOTP, requestOTP, isLoading, error, clearError } = useAuthStore();
+  const { verifyOTP, requestOTP, isLoading, error, clearError } = useAuthStore()
 
-  // OTP digits as array for individual box UI
-  const [digits,    setDigits]    = useState<string[]>(Array(OTP_LENGTH).fill(''));
-  const [countdown, setCountdown] = useState(RESEND_SECS);
-  const [canResend, setCanResend] = useState(false);
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  // ── State ────────────────────────────────────
+  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''))
+  const [countdown, setCountdown] = useState(RESEND_SECS)
+  const [canResend, setCanResend] = useState(false)
+  const [activeInput, setActiveInput] = useState<number>(0)
+  const inputRefs = useRef<(TextInput | null)[]>([])
 
-  // ── Countdown timer ───────────────────────
+  // ── Timer Logic ───────────────────────────────
   useEffect(() => {
-    if (countdown <= 0) { setCanResend(true); return; }
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown]);
+    if (countdown <= 0) {
+      setCanResend(true)
+      return
+    }
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [countdown])
 
-  // ── OTP input handling ────────────────────
+  // ── Input Handling ────────────────────────────
   const handleDigitChange = (val: string, index: number) => {
-    if (error) clearError();
-    const cleaned = val.replace(/\D/g, '').slice(-1); // digits only, 1 char
-    const updated = [...digits];
-    updated[index] = cleaned;
-    setDigits(updated);
+    if (error) clearError()
+    const cleaned = val.replace(/\D/g, '').slice(-1)
+    const updated = [...digits]
+    updated[index] = cleaned
+    setDigits(updated)
 
     // Auto-advance to next box
     if (cleaned && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
+      inputRefs.current[index + 1]?.focus()
     }
-  };
+  }
 
   const handleKeyPress = (e: any, index: number) => {
-    // Backspace on empty box → go to previous
+    // Backspace logic
     if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      inputRefs.current[index - 1]?.focus()
     }
-  };
-
-  const otp = digits.join('');
-
-  // ── Submit ────────────────────────────────
-const handleVerify = async () => {
-  if (otp.length < OTP_LENGTH) return;
-  try {
-    if (reason === 'reset') {
-      // Forgot password: pass identifier + otp to NewPassword
-      navigation.navigate('NewPassword', { identifier, otp });
-    } else {
-      // Registration verify: call verifyOTP then go to onboarding
-      await verifyOTP(otp, identifier, reason);
-      navigation.navigate('OnboardingWelcome');
-    } // Removed the extra }); that was here
-  } catch (err) { // Added 'err' or just catch {}
-    // Error in store, shown below
-    setDigits(Array(OTP_LENGTH).fill('')); // clear boxes on wrong OTP
-    inputRefs.current[0]?.focus();
   }
-};
 
-  // ── Resend ────────────────────────────────
-  const handleResend = async () => {
-    if (!canResend) return;
-    try {
-      await requestOTP(identifier, reason);
-      setDigits(Array(OTP_LENGTH).fill(''));
-      setCountdown(RESEND_SECS);
-      setCanResend(false);
-      inputRefs.current[0]?.focus();
-    } catch {
-      // Error in store
+  const otp = digits.join('')
+
+  // Auto-submit when fully filled
+  useEffect(() => {
+    if (otp.length === OTP_LENGTH && !isLoading) {
+      handleVerify()
     }
-  };
+  }, [otp])
 
+  // ── Submit Logic ──────────────────────────────
+  const handleVerify = async () => {
+    if (otp.length < OTP_LENGTH) return
+    try {
+      if (reason === 'reset') {
+        navigation.navigate('NewPassword', { identifier, otp })
+      } else {
+        await verifyOTP(otp, identifier, reason)
+        navigation.navigate('OnboardingWelcome')
+      }
+    } catch (err) {
+      setDigits(Array(OTP_LENGTH).fill(''))
+      inputRefs.current[0]?.focus()
+    }
+  }
+
+  // ── Resend Logic ──────────────────────────────
+  const handleResend = async () => {
+    if (!canResend) return
+    try {
+      await requestOTP(identifier, reason)
+      setDigits(Array(OTP_LENGTH).fill(''))
+      setCountdown(RESEND_SECS)
+      setCanResend(false)
+      inputRefs.current[0]?.focus()
+    } catch {}
+  }
+
+  // ── Masking Helper ────────────────────────────
   const maskedIdentifier = identifier.includes('@')
     ? identifier.replace(/(.{2}).+(@.+)/, '$1***$2')
-    : identifier.replace(/(\+\d{2})\d+(\d{3})/, '$1***$2');
+    : identifier.replace(/(\+\d{2})\d+(\d{3})/, '$1***$2')
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -122,111 +126,210 @@ const handleVerify = async () => {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.container}>
-          {/* Back */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={22} color={Colors.textDark} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Back Button (UI 1 Style) */}
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={18} color="#787777" />
           </TouchableOpacity>
 
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="mail-outline" size={36} color={Colors.primary} />
-            </View>
             <Text style={styles.title}>{t('auth.otpTitle')}</Text>
             <Text style={styles.subtitle}>
               {t('auth.otpSubtitle', { n: OTP_LENGTH })}
               {'\n'}
-              <Text style={styles.identifier}>{maskedIdentifier}</Text>
+              <Text style={styles.identifierTxt}>{maskedIdentifier}</Text>
             </Text>
           </View>
 
-          {/* Error */}
+          {/* Error Banner */}
           {error && (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle-outline" size={18} color={Colors.danger} />
-              <Text style={styles.errorText}>{error}</Text>
+              <Ionicons name="alert-circle" size={16} color="#FF0000" />
+              <Text style={styles.apiError}>{error}</Text>
             </View>
           )}
 
-          {/* OTP Boxes */}
+          {/* OTP Input Row (6 Boxes) */}
           <View style={styles.otpRow}>
             {digits.map((digit, i) => (
               <TextInput
                 key={i}
-                ref={ref => { inputRefs.current[i] = ref; }}
+                ref={(ref) => {
+                  inputRefs.current[i] = ref
+                }}
                 style={[
                   styles.otpBox,
-                  digit ? styles.otpBoxFilled : null,
-                  error  ? styles.otpBoxError : null,
+                  activeInput === i ? styles.otpBoxActive : null,
+                  error ? styles.otpBoxError : null,
+                  digit ? styles.otpBoxFilled : null
                 ]}
                 value={digit}
-                onChangeText={val => handleDigitChange(val, i)}
-                onKeyPress={e => handleKeyPress(e, i)}
+                onChangeText={(val) => handleDigitChange(val, i)}
+                onKeyPress={(e) => handleKeyPress(e, i)}
                 keyboardType="number-pad"
                 maxLength={1}
                 selectTextOnFocus
+                onFocus={() => setActiveInput(i)}
+                onBlur={() => setActiveInput(-1)}
                 autoFocus={i === 0}
               />
             ))}
           </View>
 
-          {/* Submit */}
-          <Button
-            label={t('auth.verify')}
-            onPress={handleVerify}
-            loading={isLoading}
-            disabled={otp.length < OTP_LENGTH}
-            size="lg"
-          />
+          {/* Loading Indicator */}
+          {isLoading && (
+            <ActivityIndicator style={{ marginTop: 30 }} color="#C07792" />
+          )}
 
-          {/* Resend */}
-          <View style={styles.resendRow}>
-            <Text style={styles.resendText}>{t('auth.resendPrompt')}</Text>
-            {canResend ? (
-              <TouchableOpacity onPress={handleResend} disabled={isLoading}>
-                <Text style={styles.resendLink}>{t('auth.resend')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={styles.resendTimer}>
-                {t('auth.resendIn', { s: countdown })}
-              </Text>
-            )}
+          {/* Timer Section */}
+          <View style={styles.timerRow}>
+            <Text style={styles.timerText}>
+              {t('auth.resendPrompt')}
+              {!canResend && (
+                <Text style={styles.timerBold}>
+                  {' '}
+                  {t('auth.resendIn', { s: countdown })}
+                </Text>
+              )}
+            </Text>
           </View>
-        </View>
+
+          {/* Resend Action */}
+          {canResend && (
+            <TouchableOpacity
+              style={styles.resendBtn}
+              onPress={handleResend}
+              disabled={isLoading}
+            >
+              <Ionicons name="refresh-outline" size={16} color="#C07792" />
+              <Text style={styles.resendBtnText}>{t('auth.resend')}</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
-  safe:        { flex: 1, backgroundColor: Colors.white },
-  container:   { flex: 1, padding: Spacing.xl, gap: Spacing.xl },
-  backBtn:     { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.bgInput, alignItems: 'center', justifyContent: 'center' },
-  header:      { alignItems: 'center', gap: Spacing.md },
-  iconCircle:  { width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  title:       { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textDark },
-  subtitle:    { fontSize: FontSize.md, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
-  identifier:  { color: Colors.primary, fontWeight: FontWeight.semibold },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  scrollContainer: { flexGrow: 1, alignItems: 'center', paddingBottom: 40 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    marginTop: 20,
+    marginLeft: 30,
+    alignSelf: 'flex-start',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D8DADC',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.sm
+  },
+  header: {
+    marginTop: 35,
+    paddingHorizontal: 36,
+    alignItems: 'flex-start',
+    alignSelf: 'stretch',
+    gap: 10
+  },
+  title: {
+    fontWeight: '700',
+    fontSize: 26,
+    color: '#936174'
+  },
+  subtitle: {
+    fontWeight: '400',
+    fontSize: 14,
+    color: '#797979',
+    lineHeight: 22
+  },
+  identifierTxt: {
+    color: '#C07792',
+    fontWeight: '600'
+  },
   errorBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.dangerSoft, borderRadius: Radius.md,
-    padding: Spacing.md, borderLeftWidth: 3, borderLeftColor: Colors.danger,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    marginHorizontal: 36,
+    marginTop: 25,
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF0000',
+    gap: 10,
+    alignSelf: 'stretch'
   },
-  errorText:   { flex: 1, fontSize: FontSize.sm, color: Colors.danger, fontWeight: FontWeight.medium },
-  otpRow:      { flexDirection: 'row', justifyContent: 'center', gap: Spacing.md },
-  otpBox:      {
-    width: 48, height: 56, borderRadius: Radius.md,
-    borderWidth: 2, borderColor: Colors.border,
-    textAlign: 'center', fontSize: FontSize.xxl,
-    fontWeight: FontWeight.bold, color: Colors.textDark,
-    backgroundColor: Colors.bgInput,
+  apiError: {
+    color: '#FF0000',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1
   },
-  otpBoxFilled: { borderColor: Colors.primary, backgroundColor: Colors.primarySoft },
-  otpBoxError:  { borderColor: Colors.danger, backgroundColor: Colors.dangerSoft },
-  resendRow:   { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  resendText:  { fontSize: FontSize.md, color: Colors.textMuted },
-  resendLink:  { fontSize: FontSize.md, color: Colors.primary, fontWeight: FontWeight.bold },
-  resendTimer: { fontSize: FontSize.md, color: Colors.textMuted },
-  resendTimerBold: { fontWeight: FontWeight.bold, color: Colors.textDark },
-});
+  otpRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 50,
+    gap: 8, // Reduced gap to fit 6 boxes
+    paddingHorizontal: 20
+  },
+  otpBox: {
+    width: 48, // Slightly smaller width to fit 6 boxes
+    height: 60,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#D8DADC',
+    backgroundColor: '#F9F9F9',
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333333'
+  },
+  otpBoxFilled: {
+    borderColor: '#E8D0DC',
+    backgroundColor: '#FFFFFF'
+  },
+  otpBoxActive: {
+    borderColor: '#C07792',
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF'
+  },
+  otpBoxError: {
+    borderColor: '#FF0000',
+    backgroundColor: '#FFEBEE'
+  },
+  timerRow: {
+    marginTop: 45
+  },
+  timerText: {
+    fontSize: 14,
+    color: '#797979'
+  },
+  timerBold: {
+    color: '#C07792',
+    fontWeight: '600'
+  },
+  resendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    gap: 6,
+    padding: 10
+  },
+  resendBtnText: {
+    fontWeight: '600',
+    fontSize: 15,
+    color: '#C07792'
+  }
+})

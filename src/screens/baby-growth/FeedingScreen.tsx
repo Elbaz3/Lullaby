@@ -1,41 +1,79 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
-import { GrowthScreenShell } from './GrowthScreenShell';
-import { babyGrowthService, FeedingData } from '../../services/babyGrowth.service';
-import { ApiError } from '../../services/api';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../../constants/theme';
-import { useTranslation } from '../../i18n/useTranslation';
+import React, { useEffect, useState, useCallback } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity
+} from 'react-native'
+import { RouteProp, useRoute } from '@react-navigation/native'
+import { GrowthScreenShell } from './GrowthScreenShell'
+import {
+  babyGrowthService,
+  FeedingData
+} from '../../services/babyGrowth.service'
+import { ApiError } from '../../services/api'
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Spacing,
+  Radius,
+  Shadows
+} from '../../constants/theme'
+import { useTranslation } from '../../i18n/useTranslation'
 
-type Route = RouteProp<{ Feeding: { month: number } }, 'Feeding'>;
+type Route = RouteProp<{ Feeding: { month: number } }, 'Feeding'>
 
 export const FeedingScreen: React.FC = () => {
-  const { t } = useTranslation();
-  const route = useRoute<Route>();
-  const month = route.params?.month ?? 1;
+  const { t } = useTranslation()
+  const route = useRoute<Route>()
+  const month = route.params?.month ?? 1
 
-  const [data, setData] = useState<FeedingData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<FeedingData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const d = await babyGrowthService.getFeeding(month);
-      setData(d);
+      const d = await babyGrowthService.getFeeding(month)
+      setData(d)
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : t('growth.errorFeeding');
-      setError(msg);
-      setData(null);
+      const msg = e instanceof ApiError ? e.message : t('growth.errorFeeding')
+      setError(msg)
+      setData(null)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [month, t]);
+  }, [month, t])
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load()
+  }, [load])
+
+  // Helper component for the Dynamic List Cards with Floating Badges
+  const FeedingBlock = ({
+    title,
+    items
+  }: {
+    title: string
+    items: string[]
+  }) => (
+    <View style={styles.cardContainer}>
+      <View style={[styles.floatingBadge, Shadows.sm]}>
+        <Text style={styles.badgeText}>{title}</Text>
+      </View>
+      <View style={[styles.listCard, Shadows.md]}>
+        {items.map((line, i) => (
+          <View key={i} style={styles.itemRow}>
+            <Text style={styles.itemText}>{line}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
 
   return (
     <GrowthScreenShell centerTitle={t('growth.feedingTitle')}>
@@ -44,6 +82,7 @@ export const FeedingScreen: React.FC = () => {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
+
       {!loading && error && (
         <View style={styles.centered}>
           <Text style={styles.errorText}>{error}</Text>
@@ -52,102 +91,129 @@ export const FeedingScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       )}
+
       {!loading && data && (
         <View style={styles.content}>
-          <View style={[styles.rangeBadge, Shadows.sm]}>
-            <Text style={styles.rangeText}>
-              {t('growth.monthsRange', { min: data.minMonth, max: data.maxMonth })}
+          {/* Centered Age Header */}
+          <View style={styles.ageHeader}>
+            <Text style={styles.ageText}>
+              {t('growth.monthsRange', {
+                min: data.minMonth,
+                max: data.maxMonth
+              })}
             </Text>
           </View>
-          {!!data.overview && <Text style={styles.overview}>{data.overview}</Text>}
 
-          {data.foods.map((group, gi) => (
-            <View key={gi} style={[styles.block, Shadows.md]}>
-              {!!group.category && <Text style={styles.blockTitle}>{group.category}</Text>}
-              {group.items.map((line, ii) => (
-                <View key={ii} style={styles.bulletRow}>
-                  <Text style={styles.bullet}>•</Text>
-                  <Text style={styles.bulletText}>{line}</Text>
-                </View>
-              ))}
-            </View>
-          ))}
-
-          {data.notes.length > 0 && (
-            <View style={[styles.block, Shadows.md]}>
-              <Text style={styles.blockTitle}>{t('growth.notes')}</Text>
-              {data.notes.map((line, i) => (
-                <View key={i} style={styles.bulletRow}>
-                  <Text style={styles.bullet}>•</Text>
-                  <Text style={styles.bulletText}>{line}</Text>
-                </View>
-              ))}
+          {/* Overview Card */}
+          {!!data.overview && (
+            <View style={[styles.overviewCard, Shadows.sm]}>
+              <Text style={styles.overviewText}>{data.overview}</Text>
             </View>
           )}
+
+          {/* Dynamic Food Category Cards */}
+          {data.foods.map((group, gi) => (
+            <FeedingBlock
+              key={gi}
+              title={group.category || t('growth.feedingTitle')}
+              items={group.items}
+            />
+          ))}
+
+          {/* Notes Card */}
+          {data.notes.length > 0 && (
+            <FeedingBlock title={t('growth.notes')} items={data.notes} />
+          )}
+
+          <View style={{ height: Spacing.huge }} />
         </View>
       )}
     </GrowthScreenShell>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
-  centered: { paddingVertical: Spacing.xxxl, alignItems: 'center', gap: Spacing.md },
-  content: { gap: Spacing.lg },
-  rangeBadge: {
-    alignSelf: 'flex-start',
+  centered: {
+    paddingVertical: Spacing.xxxl,
+    alignItems: 'center',
+    gap: Spacing.md
+  },
+  content: {
+    paddingHorizontal: Spacing.sm,
+    gap: Spacing.lg
+  },
+  ageHeader: {
+    alignItems: 'center',
+    marginBottom: Spacing.sm
+  },
+  ageText: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.medium,
+    color: '#A97C8E' // Muted rose
+  },
+  overviewCard: {
     backgroundColor: Colors.white,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.sm
+  },
+  overviewText: {
+    fontSize: 14,
+    color: '#797979',
+    lineHeight: 22
+  },
+  cardContainer: {
+    alignItems: 'center',
+    marginTop: 25,
+    width: '100%'
+  },
+  floatingBadge: {
+    position: 'absolute',
+    top: -18,
+    zIndex: 10,
+    backgroundColor: Colors.white,
+    paddingHorizontal: 35,
+    paddingVertical: 10,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E8D0DC'
   },
-  rangeText: {
-    fontSize: FontSize.sm,
+  badgeText: {
+    fontSize: 15,
     fontWeight: FontWeight.semibold,
-    color: Colors.primary,
+    color: '#936174' // Dusty Rose
   },
-  overview: {
-    fontSize: FontSize.md,
-    color: Colors.textMedium,
-    lineHeight: 24,
-  },
-  block: {
+  listCard: {
     backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    paddingTop: 35, // Space for the floating badge
+    width: '100%',
+    gap: Spacing.md
   },
-  blockTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-    color: Colors.textDark,
-    marginBottom: Spacing.xs,
+  itemRow: {
+    paddingVertical: 2
   },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
-  bullet: {
-    fontSize: FontSize.md,
-    color: Colors.primary,
-    lineHeight: 24,
-    marginTop: 1,
-  },
-  bulletText: {
-    flex: 1,
-    fontSize: FontSize.md,
-    color: Colors.textDark,
-    lineHeight: 24,
+  itemText: {
+    fontSize: 14,
+    color: '#333333',
+    lineHeight: 22
   },
   errorText: {
     fontSize: FontSize.md,
     color: Colors.danger,
     textAlign: 'center',
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.lg
   },
   retryBtn: {
     backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
-    borderRadius: Radius.full,
+    borderRadius: Radius.full
   },
-  retryLabel: { color: Colors.white, fontWeight: FontWeight.semibold, fontSize: FontSize.md },
-});
+  retryLabel: {
+    color: Colors.white,
+    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.md
+  }
+})

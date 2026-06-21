@@ -1,54 +1,57 @@
 // ─────────────────────────────────────────────
-//  LULLABY — Design Tokens
+//  LULLABY — Updated Design Tokens (Pink Theme)
 // ─────────────────────────────────────────────
 
 export const Colors = {
-  // Primary palette
-  primary: '#4A90D9',
-  primaryDark: '#2C5F8A',
-  primaryLight: '#7BB8EC',
-  primarySoft: '#D6EAFB',
+  // Primary palette (Based on the new Pink UI)
+  primary: '#C07792', // The main brand pink
+  primaryDark: '#8E5E71', // Darker rose for headers/titles
+  primaryLight: '#E8B7D4', // Lighter pink for gradients
+  primarySoft: '#FFF0F5', // Lavender Blush (very soft pink for backgrounds)
 
   // Backgrounds
-  bgMain: '#E8F4FD',
-  bgCard: '#FFFFFF',
-  bgInput: '#F4F8FC',
+  bgMain: '#FDF2F4', // Softest pink background
+  bgCard: '#FFFFFF', // Solid white for cards
+  bgCardTranslucent: '#FFFFFFCC', // Translucent white for blur effects
+  bgInput: '#FDF8FA', // Slightly pinkish white for inputs
 
-  // Text
-  textDark: '#1A2B4A',
-  textMedium: '#4A6580',
-  textMuted: '#8FA3B8',
-  textLight: '#BDD0E0',
+  // Text (Shifted to brownish-rose tones for warmth)
+  textDark: '#4A3B40', // Dark grayish brown for main text
+  textMedium: '#8E5E71', // Medium rose for sub-headers
+  textMuted: '#A97C8E', // Grayish-pink for captions
+  textLight: '#CEAFBB', // Very light pink for placeholders
 
   // Semantic
   success: '#4CAF50',
   successSoft: '#E8F5E9',
   warning: '#FF9800',
   warningSoft: '#FFF3E0',
-  danger: '#F44336',
+  danger: '#E53935',
   dangerSoft: '#FFEBEE',
-  info: '#03A9F4',
-  infoSoft: '#E1F5FE',
+  info: '#2196F3',
+  infoSoft: '#E3F2FD',
 
-  // Sensor card colors
-  tempCard: '#FFE0B2',
-  heartCard: '#FCE4EC',
-  breathCard: '#E8F5E9',
-  micCard: '#EDE7F6',
-  airCard: '#E1F5FE',
+  // Dashboard / Sensor Card Specific Colors (Matches your logic)
+  tempCard: '#5DADE2', // Blue for Temperature
+  heartCard: '#EBADBD', // Pink for Heart Rate
+  breathCard: '#D2B4DE', // Purple for Breathing
+  vaccineCard: '#AED6F1', // Light Blue for Vaccination
+  routineCard: '#F5CBA7', // Peach/Orange for Routine
+  cryCard: '#F1948A', // Salmon/Red for Cry Detection
+  airCard: '#82E0AA', // Greenish for Air Quality
 
   // Neutral
   white: '#FFFFFF',
   black: '#000000',
-  border: '#DDE8F0',
-  divider: '#EEF4F9',
-  overlay: 'rgba(26, 43, 74, 0.5)',
+  border: '#E8D0DC', // Soft pink-grey border
+  divider: '#F0D5E0', // Light pink divider
+  overlay: 'rgba(74, 59, 64, 0.4)', // Semi-transparent dark rose
 
-  // Tab bar
-  tabActive: '#4A90D9',
-  tabInactive: '#8FA3B8',
-  tabBg: '#FFFFFF',
-} as const;
+  // Tab bar (Matches the pill-shaped image)
+  tabActive: '#C07792',
+  tabInactive: '#D1D1D1',
+  tabBg: '#FFFFFF'
+} as const
 
 export const Spacing = {
   xs: 4,
@@ -59,8 +62,8 @@ export const Spacing = {
   xxl: 24,
   xxxl: 32,
   huge: 48,
-  giant: 64,
-} as const;
+  giant: 64
+} as const
 
 export const Radius = {
   xs: 4,
@@ -68,58 +71,59 @@ export const Radius = {
   md: 12,
   lg: 16,
   xl: 20,
-  xxl: 24,
-  full: 999,
-} as const;
+  xxl: 25, // Updated to 25 to match the rounded cards in new UI
+  xxxl: 32, // For the main feature cards
+  full: 999
+} as const
 
 export const FontSize = {
   xs: 11,
   sm: 13,
   md: 15,
-  lg: 17,
-  xl: 20,
-  xxl: 24,
-  xxxl: 28,
-  display: 34,
-} as const;
+  lg: 18, // Slightly increased for the Poppins aesthetic
+  xl: 22,
+  xxl: 28,
+  xxxl: 32,
+  display: 36
+} as const
 
 export const FontWeight = {
   regular: '400' as const,
   medium: '500' as const,
   semibold: '600' as const,
   bold: '700' as const,
-  extrabold: '800' as const,
-};
+  extrabold: '800' as const
+}
 
 export const Shadows = {
   sm: {
-    shadowColor: '#1A2B4A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowColor: '#936174', // Tinted shadows for the pink theme
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 2
   },
   md: {
-    shadowColor: '#1A2B4A',
+    shadowColor: '#936174',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 5
   },
   lg: {
-    shadowColor: '#4A90D9',
+    shadowColor: '#C07792',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 20,
-    elevation: 8,
-  },
-} as const;
+    elevation: 10
+  }
+} as const
 
 export const Layout = {
   screenPadding: Spacing.xl,
   cardPadding: Spacing.lg,
   inputHeight: 52,
-  buttonHeight: 54,
+  buttonHeight: 55, // Slightly taller buttons
   tabBarHeight: 70,
-  headerHeight: 60,
-} as const;
+  headerHeight: 60
+} as const

@@ -8,47 +8,28 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Animated,
-  RefreshControl
+  Alert,
+  ActivityIndicator
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 
 // Logic & Store Imports
 import { assistantService } from '../../services/assistant.service'
 import { AssistantMessage } from '../../constants/mockData'
-import {
-  Colors,
-  FontSize,
-  FontWeight,
-  Spacing,
-  Radius,
-  Shadows
-} from '../../constants/theme'
+import { Shadows } from '../../constants/theme'
 import { useBabyStore } from '../../store/babyStore'
 import { useTranslation } from '../../i18n/useTranslation'
 
-const SUGGESTION_KEYS = [
-  'q1',
-  'q2',
-  'q3',
-  'q4',
-  'q5',
-  'q6',
-  'q7',
-  'q8'
-] as const
-
 // ── Typing Indicator Component ────────────────
-const TypingIndicator: React.FC = () => {
+const TypingIndicator: React.FC<{ isRTL: boolean }> = ({ isRTL }) => {
   const anims = [
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current
   ]
-
   useEffect(() => {
     const animations = anims.map((anim, i) =>
       Animated.loop(
@@ -73,7 +54,12 @@ const TypingIndicator: React.FC = () => {
   }, [])
 
   return (
-    <View style={typingStyles.container}>
+    <View
+      style={[
+        typingStyles.container,
+        { flexDirection: isRTL ? 'row-reverse' : 'row' }
+      ]}
+    >
       {anims.map((anim, i) => (
         <Animated.View
           key={i}
@@ -97,44 +83,24 @@ const TypingIndicator: React.FC = () => {
 }
 
 export const AssistantScreen: React.FC = () => {
+  const insets = useSafeAreaInsets()
   const { activeBaby } = useBabyStore()
-  const { t } = useTranslation()
-
+  const { t, isRTL } = useTranslation()
   const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
+  const [isClearingMemory, setIsClearingMemory] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
 
-  // Initialize Welcome Message with Translations
   useEffect(() => {
-    setMessages([
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: t('assistant.welcomeMsg'),
-        timestamp: new Date().toISOString()
-      }
-    ])
-  }, [t])
+    setMessages([])
+  }, [])
 
-  const scrollToBottom = () => {
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages, isTyping])
-
-  const onRefresh = () => {
-    setRefreshing(true)
-    clearChat()
-    setTimeout(() => setRefreshing(false), 1000)
-  }
-
+  // ── Send message → POST /api/chatbot/ask ──
   const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim()
     if (!content) return
+
     setInput('')
 
     const userMsg: AssistantMessage = {
@@ -143,20 +109,21 @@ export const AssistantScreen: React.FC = () => {
       content,
       timestamp: new Date().toISOString()
     }
-
     setMessages((prev) => [...prev, userMsg])
     setIsTyping(true)
 
     try {
-      const reply = await assistantService.sendMessage(content, messages)
-      const assistantMsg: AssistantMessage = {
-        id: `msg_${Date.now() + 1}`,
-        role: 'assistant',
-        content: reply,
-        timestamp: new Date().toISOString()
-      }
-      setMessages((prev) => [...prev, assistantMsg])
-    } catch {
+      const reply = await assistantService.sendMessage(content)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_${Date.now() + 1}`,
+          role: 'assistant',
+          content: reply,
+          timestamp: new Date().toISOString()
+        }
+      ])
+    } catch (err: any) {
       setMessages((prev) => [
         ...prev,
         {
@@ -171,325 +138,325 @@ export const AssistantScreen: React.FC = () => {
     }
   }
 
-  const clearChat = () =>
-    setMessages([
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: t('assistant.welcomeMsg'),
-        timestamp: new Date().toISOString()
-      }
-    ])
+  // ── Clear chat → DELETE /api/chatbot/memory ──
+  const handleClearMemory = () => {
+    Alert.alert(
+      t('assistant.clearTitle') || 'Clear Chat',
+      t('assistant.clearConfirm') ||
+        'This will clear the conversation and reset memory on the server.',
+      [
+        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+        {
+          text: t('common.confirm') || 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            setIsClearingMemory(true)
+            try {
+              await assistantService.clearMemory()
+              setMessages([])
+            } catch {
+              // Memory clear failed silently — still clear local messages
+              setMessages([])
+            } finally {
+              setIsClearingMemory(false)
+            }
+          }
+        }
+      ]
+    )
+  }
 
-  const showSuggestions = messages.length <= 1
+  // RTL Helpers
+  const textAlign = isRTL ? 'right' : 'left'
+  const rowDirection = isRTL ? 'row-reverse' : 'row'
 
   return (
-    <LinearGradient
-      colors={['#FFE5EC', '#F8C8DC', '#E8B7D4']}
-      style={{ flex: 1 }}
-    >
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.botAvatar}>
-              <Text style={styles.botAvatarEmoji}>🤖</Text>
-            </View>
-            <View>
-              <Text style={styles.headerTitle}>{t('assistant.title')}</Text>
-              <View style={styles.onlineRow}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.onlineText}>{t('assistant.online')}</Text>
-              </View>
-            </View>
+    <View style={styles.root}>
+      <LinearGradient
+        colors={['#FDF2F4', '#F9E7ED', '#E8B7D4']}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <View style={styles.watermarkLayer} pointerEvents="none">
+        {[...Array(15)].map((_, i) => (
+          <MaterialCommunityIcons
+            key={i}
+            name="face-woman-outline"
+            size={80}
+            color="#C07792"
+            style={styles.watermarkIcon}
+          />
+        ))}
+      </View>
+
+      {/* Header */}
+      <View style={[styles.headerFlat, { paddingTop: insets.top + 10 }]}>
+        <View style={[styles.headerContent, { flexDirection: rowDirection }]}>
+          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+            <Text style={styles.headerTitle}>{t('assistant.title')}</Text>
+            <Text style={styles.headerSub}>{t('assistant.online')}</Text>
           </View>
-          <TouchableOpacity style={styles.clearBtn} onPress={clearChat}>
-            <Ionicons name="refresh-outline" size={18} color="#8E5E71" />
+
+          {/* Trash / clear button */}
+          <TouchableOpacity
+            onPress={handleClearMemory}
+            disabled={isClearingMemory || messages.length === 0}
+            style={{ opacity: messages.length === 0 ? 0.4 : 1 }}
+          >
+            {isClearingMemory ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Ionicons name="trash-outline" size={22} color="#FFF" />
+            )}
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Active baby context */}
-        {activeBaby && (
-          <View style={styles.contextBanner}>
-            <Ionicons
-              name="information-circle-outline"
-              size={14}
-              color="#C07792"
-            />
-            <Text style={styles.contextText}>
-              {t('assistant.contextPrefix')}{' '}
-              <Text style={styles.contextBabyName}>{activeBaby.name}</Text>
-            </Text>
-          </View>
-        )}
-
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.messageList}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() =>
+            scrollRef.current?.scrollToEnd({ animated: true })
+          }
         >
-          {/* Messages */}
-          <ScrollView
-            ref={scrollRef}
-            contentContainerStyle={styles.messageList}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor="#C07792"
-              />
-            }
-          >
-            {messages.map((msg) => (
-              <View
-                key={msg.id}
-                style={[
-                  styles.msgRow,
-                  msg.role === 'user' && styles.msgRowUser
-                ]}
+          {messages.length === 0 ? (
+            <View style={styles.welcomeContainer}>
+              <Text style={styles.welcomeTitle}>
+                {t('welcome.welcomeTo')} {t('assistant.title')} ! 👶
+              </Text>
+              <View style={styles.welcomeContent}>
+                <Text style={styles.welcomeHeadline}>
+                  {t('assistant.welcomeMsg').split('\n\n')[0]}
+                </Text>
+                <Text style={styles.welcomeSub}>
+                  {t('assistant.welcomeMsg').split('\n\n')[1]}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.startBadge}
+                onPress={() => setInput(isRTL ? 'مرحباً!' : 'Hi!')}
               >
-                {msg.role === 'assistant' && (
-                  <View style={styles.msgAvatar}>
-                    <Text style={{ fontSize: 16 }}>🤖</Text>
-                  </View>
-                )}
-                <View
-                  style={[
-                    styles.msgBubble,
-                    msg.role === 'user'
-                      ? styles.msgBubbleUser
-                      : styles.msgBubbleAssistant
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.msgText,
-                      msg.role === 'user'
-                        ? styles.msgTextUser
-                        : styles.msgTextAssistant
-                    ]}
-                  >
-                    {msg.content}
-                  </Text>
-                </View>
-              </View>
-            ))}
-
-            {/* Typing indicator */}
-            {isTyping && (
-              <View style={styles.msgRow}>
-                <View style={styles.msgAvatar}>
-                  <Text style={{ fontSize: 16 }}>🤖</Text>
-                </View>
-                <View style={styles.msgBubbleAssistant}>
-                  <TypingIndicator />
-                </View>
-              </View>
-            )}
-
-            {/* Suggested questions */}
-            {showSuggestions && !isTyping && (
-              <View style={styles.suggestions}>
-                <Text style={styles.suggestionsTitle}>
+                <Text style={styles.startBadgeText}>
                   {t('assistant.tryAsking')}
                 </Text>
-                <View style={styles.suggestionPills}>
-                  {SUGGESTION_KEYS.map((k) => {
-                    const q = t(`assistant.${k}`)
-                    return (
-                      <TouchableOpacity
-                        key={k}
-                        style={styles.suggestionPill}
-                        onPress={() => sendMessage(q)}
-                      >
-                        <Text style={styles.suggestionPillText}>{q}</Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-              </View>
-            )}
-
-            <View style={{ height: 20 }} />
-          </ScrollView>
-
-          {/* Input Area - Adjusted for floating Tab Bar */}
-          <View style={styles.inputArea}>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                placeholder={t('assistant.inputPh')}
-                placeholderTextColor="#A97C8E"
-                value={input}
-                onChangeText={setInput}
-                multiline
-                maxLength={500}
-                onSubmitEditing={() => sendMessage()}
-              />
-              <TouchableOpacity
-                style={[
-                  styles.sendBtn,
-                  (!input.trim() || isTyping) && styles.sendBtnDisabled
-                ]}
-                onPress={() => sendMessage()}
-                disabled={!input.trim() || isTyping}
-              >
-                {isTyping ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Ionicons name="send" size={18} color="#fff" />
-                )}
               </TouchableOpacity>
             </View>
+          ) : (
+            <>
+              <Text style={styles.dateSeparator}>
+                {t('notifications.today')}
+              </Text>
+              {messages.map((msg) => (
+                <View
+                  key={msg.id}
+                  style={[
+                    styles.msgRow,
+                    msg.role === 'user'
+                      ? styles.msgRowUser
+                      : styles.msgRowAssistant,
+                    isRTL &&
+                      (msg.role === 'user'
+                        ? { alignItems: 'flex-start' }
+                        : { alignItems: 'flex-end' })
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.msgBubble,
+                      msg.role === 'user'
+                        ? styles.msgBubbleUser
+                        : styles.msgBubbleAssistant,
+                      isRTL &&
+                        (msg.role === 'user'
+                          ? {
+                              borderBottomRightRadius: 18,
+                              borderBottomLeftRadius: 2
+                            }
+                          : {
+                              borderBottomLeftRadius: 18,
+                              borderBottomRightRadius: 2
+                            })
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.msgText,
+                        msg.role === 'user'
+                          ? styles.msgTextUser
+                          : styles.msgTextAssistant,
+                        { textAlign }
+                      ]}
+                    >
+                      {msg.content}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              {isTyping && (
+                <View
+                  style={[
+                    styles.msgRowAssistant,
+                    isRTL && { alignItems: 'flex-end' }
+                  ]}
+                >
+                  <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
+                    <TypingIndicator isRTL={isRTL} />
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+
+        {/* Input Area */}
+        <View style={styles.inputArea}>
+          <View style={[styles.inputRow, { flexDirection: rowDirection }]}>
+            <TextInput
+              style={[styles.input, { textAlign }]}
+              placeholder={t('assistant.inputPh')}
+              placeholderTextColor="#A97C8E"
+              value={input}
+              onChangeText={setInput}
+              multiline
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                { transform: [{ scaleX: isRTL ? -1 : 1 }] }
+              ]}
+              onPress={() => sendMessage()}
+              disabled={!input.trim() || isTyping}
+            >
+              <MaterialCommunityIcons
+                name="chat-plus"
+                size={26}
+                color={!input.trim() || isTyping ? '#D1A8B8' : '#C07792'}
+              />
+            </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </LinearGradient>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   )
 }
 
 const typingStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    gap: 4,
-    padding: Spacing.md,
-    alignItems: 'center'
-  },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#A97C8E' }
+  container: { gap: 4, padding: 8, alignItems: 'center' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#A97C8E' }
 })
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: 'transparent' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    backgroundColor: '#FFFFFFCC',
-    ...Shadows.sm
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  botAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF0F5',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  botAvatarEmoji: { fontSize: 22 },
-  headerTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: '#8E5E71'
-  },
-  onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#4CAF50'
-  },
-  onlineText: {
-    fontSize: FontSize.xs,
-    color: '#4CAF50',
-    fontWeight: FontWeight.medium
-  },
-  clearBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F0D5E0',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  contextBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFF0F5',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: 8
-  },
-  contextText: { fontSize: FontSize.xs, color: '#8E5E71' },
-  contextBabyName: { fontWeight: FontWeight.bold, color: '#C07792' },
-  messageList: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 20 },
-  msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm },
-  msgRowUser: { justifyContent: 'flex-end' },
-  msgAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFF0F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2
-  },
-  msgBubble: { maxWidth: '75%', borderRadius: Radius.xl, padding: Spacing.md },
-  msgBubbleAssistant: {
-    backgroundColor: '#FFFFFFCC',
-    borderBottomLeftRadius: 4,
-    ...Shadows.sm
-  },
-  msgBubbleUser: { backgroundColor: '#C07792', borderBottomRightRadius: 4 },
-  msgText: { fontSize: FontSize.md, lineHeight: 22 },
-  msgTextAssistant: { color: '#8E5E71' },
-  msgTextUser: { color: '#fff' },
-  suggestions: { marginTop: Spacing.md, gap: Spacing.md },
-  suggestionsTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: '#A97C8E',
-    textAlign: 'center'
-  },
-  suggestionPills: {
+  root: { flex: 1 },
+  watermarkLayer: {
+    ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.sm,
-    justifyContent: 'center'
+    justifyContent: 'center',
+    opacity: 0.04,
+    paddingTop: 120
   },
-  suggestionPill: {
-    backgroundColor: '#FFFFFFCC',
-    borderRadius: Radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: '#E8D0DC',
+  watermarkIcon: { margin: 25 },
+  headerFlat: {
+    backgroundColor: '#C07792',
+    width: '100%',
+    paddingBottom: 20,
+    paddingHorizontal: 25,
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
+    ...Shadows.md,
+    zIndex: 10
+  },
+  headerContent: { justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFF' },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+  messageList: { padding: 20, flexGrow: 1, paddingBottom: 40 },
+  welcomeContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 400
+  },
+  welcomeTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#C07792',
+    textAlign: 'center'
+  },
+  welcomeContent: { alignItems: 'center', marginVertical: 30 },
+  welcomeHeadline: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4A3B40',
+    textAlign: 'center'
+  },
+  welcomeSub: {
+    fontSize: 14,
+    color: '#8E5E71',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40
+  },
+  startBadge: {
+    backgroundColor: 'rgba(192, 119, 146, 0.1)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C07792'
+  },
+  startBadgeText: { color: '#8E5E71', fontWeight: '600' },
+  dateSeparator: {
+    textAlign: 'center',
+    color: '#8E5E71',
+    fontSize: 14,
+    marginBottom: 20,
+    fontWeight: '600',
+    opacity: 0.7
+  },
+  msgRow: { marginVertical: 6, width: '100%' },
+  msgRowUser: { alignItems: 'flex-end' },
+  msgRowAssistant: { alignItems: 'flex-start' },
+  msgBubble: { maxWidth: '80%', padding: 15, borderRadius: 18 },
+  msgBubbleUser: { backgroundColor: '#C07792', borderBottomRightRadius: 2 },
+  msgBubbleAssistant: {
+    backgroundColor: '#FFF',
+    borderBottomLeftRadius: 2,
     ...Shadows.sm
   },
-  suggestionPillText: {
-    fontSize: FontSize.sm,
-    color: '#C07792',
-    fontWeight: FontWeight.medium
-  },
+  msgText: { fontSize: 15, lineHeight: 20 },
+  msgTextUser: { color: '#FFF' },
+  msgTextAssistant: { color: '#4A3B40' },
   inputArea: {
-    backgroundColor: '#FFFFFFCC',
-    padding: Spacing.md,
-    ...Shadows.md,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-    marginBottom: 100 // Raised to clear the floating bottom tab bar
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 15
   },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm },
+  inputRow: {
+    backgroundColor: '#FFF',
+    borderRadius: 25,
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    ...Shadows.md,
+    borderWidth: 1,
+    borderColor: '#F0D5E0'
+  },
   input: {
     flex: 1,
-    backgroundColor: '#FDF8FA',
-    borderRadius: Radius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    fontSize: FontSize.md,
-    color: '#8E5E71',
-    maxHeight: 80
+    color: '#4A3B40',
+    fontSize: 15,
+    paddingHorizontal: 10,
+    maxHeight: 100
   },
   sendBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#C07792',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  sendBtnDisabled: { opacity: 0.5 }
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center'
+  }
 })

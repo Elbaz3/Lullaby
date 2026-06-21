@@ -1,47 +1,71 @@
-// ─────────────────────────────────────────────
-//  LULLABY — Baby Care Assistant Service
-//  USE_MOCK = true → smart keyword matching
-//  USE_MOCK = false → your backend AI endpoint
-// ─────────────────────────────────────────────
+import { apiRequest, BASE_URL, STORAGE_KEYS } from './api'
+import * as SecureStore from 'expo-secure-store'
+import { getLocale } from '../store/localeStore'
 
-import { apiRequest } from './api';
-import { MOCK_ASSISTANT_RESPONSES, AssistantMessage } from '../constants/mockData';
+// ── Types ─────────────────────────────────────
 
-const USE_MOCK = true;
+export interface ChatbotResponse {
+  success: boolean
+  answer: string
+  session_id: string
+  language: string
+}
 
-const findMockResponse = (message: string): string => {
-  const lower = message.toLowerCase();
-  if (lower.match(/cry|crying|cries|sobbing/)) return MOCK_ASSISTANT_RESPONSES.cry;
-  if (lower.match(/sleep|nap|tired|bedtime|night/)) return MOCK_ASSISTANT_RESPONSES.sleep;
-  if (lower.match(/hungry|hunger|feed|feeding|milk|breast|formula|solid|food/)) return MOCK_ASSISTANT_RESPONSES.feeding;
-  if (lower.match(/vaccin|shot|immuniz|inject/)) return MOCK_ASSISTANT_RESPONSES.vaccination;
-  if (lower.match(/fever|temperature|hot|sick/)) return MOCK_ASSISTANT_RESPONSES.fever;
-  if (lower.match(/grow|weight|height|develop/)) return MOCK_ASSISTANT_RESPONSES.growth;
-  if (lower.match(/colic|colicky/)) return MOCK_ASSISTANT_RESPONSES.colic;
-  return MOCK_ASSISTANT_RESPONSES.default;
-};
+// ── Service ───────────────────────────────────
 
 export const assistantService = {
-  sendMessage: async (
-    message: string,
-    history: AssistantMessage[]
-  ): Promise<string> => {
-    if (USE_MOCK) {
-      // Simulate thinking delay
-      await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
-      return findMockResponse(message);
+  /**
+   * POST /api/chatbot/ask
+   * Body: { question: string }
+   * Returns the assistant's answer as a plain string.
+   */
+  sendMessage: async (question: string): Promise<string> => {
+    const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN)
+
+    const response = await fetch(`${BASE_URL}/chatbot/ask`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        lang: getLocale(),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ question })
+    })
+
+    let json: ChatbotResponse
+    try {
+      json = await response.json()
+    } catch {
+      throw new Error('Server returned an unexpected response.')
     }
-    // TODO: Replace with your backend AI endpoint
-    const res = await apiRequest<{ data: { reply: string } }>(
-      '/assistant/chat',
-      {
-        method: 'POST',
-        body: {
-          message,
-          history: history.map(m => ({ role: m.role, content: m.content })),
-        },
-      }
-    );
-    return res.data.reply;
+
+    if (!response.ok || !json.success) {
+      throw new Error(json.answer ?? 'Something went wrong. Please try again.')
+    }
+
+    return json.answer
   },
-};
+
+  /**
+   * DELETE /api/chatbot/memory
+   * Clears the server-side session memory for the current user.
+   * Only the Bearer token is needed — no body.
+   */
+  clearMemory: async (): Promise<void> => {
+    const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN)
+
+    const response = await fetch(`${BASE_URL}/chatbot/memory`, {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+        lang: getLocale(),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to clear chat memory.')
+    }
+  }
+}

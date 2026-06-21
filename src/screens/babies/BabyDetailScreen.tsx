@@ -120,14 +120,6 @@ export const BabyDetailScreen: React.FC = () => {
                   {t('babyDetail.oldSuffix')}
                 </Text>
                 <View style={styles.heroTags}>
-                  <Badge
-                    label={
-                      baby.gender === 'male'
-                        ? t('babyDetail.boy')
-                        : t('babyDetail.girl')
-                    }
-                    variant="primary"
-                  />
                   {baby.deviceId && (
                     <Badge
                       label={t('babyDetail.connected')}
@@ -170,22 +162,29 @@ export const BabyDetailScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Set as Active Button */}
+          {/* ── Baby Routine Button ── */}
           <TouchableOpacity
-            style={styles.setActiveBtn}
-            onPress={() => {
-              setActiveBaby(baby.id)
-              navigation.goBack()
-            }}
+            style={[styles.routineBtn, Shadows.sm]}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('BabyRoutine')}
           >
-            <Ionicons
-              name="radio-button-on-outline"
-              size={18}
-              color={Colors.primary}
-            />
-            <Text style={styles.setActiveBtnText}>
-              {t('babyDetail.setActive')}
-            </Text>
+            <LinearGradient
+              colors={['#C07792', '#E8A0B4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.routineBtnGradient}
+            >
+              <View style={styles.routineBtnIcon}>
+                <Ionicons name="sparkles-outline" size={22} color="#C07792" />
+              </View>
+              <View style={styles.routineBtnText}>
+                <Text style={styles.routineBtnTitle}>Baby Routine</Text>
+                <Text style={styles.routineBtnSub}>
+                  AI-powered health recommendation
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#fff" />
+            </LinearGradient>
           </TouchableOpacity>
 
           {/* Live Vitals */}
@@ -476,20 +475,39 @@ const styles = StyleSheet.create({
   },
   heroStatLabel: { fontSize: FontSize.xs, color: Colors.textMuted },
   heroStatDivider: { width: 1, backgroundColor: '#E8D0DC' },
-  setActiveBtn: {
+
+  // ── Baby Routine Button ──
+  routineBtn: {
+    borderRadius: Radius.xxl,
+    overflow: 'hidden'
+  },
+  routineBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.primarySoft,
-    borderRadius: Radius.full,
-    paddingVertical: Spacing.md
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.md
   },
-  setActiveBtnText: {
+  routineBtnIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFFDD',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  routineBtnText: { flex: 1 },
+  routineBtnTitle: {
     fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.primary
+    fontWeight: FontWeight.bold,
+    color: '#fff'
   },
+  routineBtnSub: {
+    fontSize: FontSize.xs,
+    color: '#FFFFFFCC',
+    marginTop: 2
+  },
+
   vitalsGrid: { flexDirection: 'row', justifyContent: 'space-between' },
   vitalItem: { alignItems: 'center', gap: 6 },
   vitalIcon: {
@@ -566,5 +584,6 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
     color: Colors.textDark
   },
-  rowDivider: { height: 1, backgroundColor: Colors.divider, marginLeft: 44 }
+  rowDivider: { height: 1, backgroundColor: Colors.divider, marginLeft: 44 },
+  vitalsCard: { backgroundColor: '#FFFFFFCC' }
 })

@@ -17,75 +17,120 @@ import {
   Radius,
   Shadows
 } from '../../constants/theme'
+import { useTranslation } from '../../i18n/useTranslation'
 
-const LAST_UPDATED = 'June 1, 2025'
+// ── Translated Data ──────────────────────────────────────────────────
 
-const SECTIONS = [
-  {
-    icon: 'shield-checkmark-outline',
-    title: 'Information We Collect',
-    body: `We collect information you provide directly, such as your name, email address, and baby profiles (name, date of birth, gender, weight, and height). We also collect cry audio samples during active detection sessions — these are processed on-device and never stored on our servers.\n\nWe automatically collect basic usage data (feature interactions, crash reports) to improve the app.`
+const POLICY_DATA = {
+  en: {
+    lastUpdated: 'June 1, 2025',
+    introTitle: 'Your privacy matters to us',
+    introText:
+      'Lullaby is built for families. We are committed to being transparent about how we collect, use, and protect the data you trust us with. Please read this policy carefully.',
+    footerText:
+      'By using Lullaby you agree to this Privacy Policy. If you do not agree, please discontinue use and contact us to delete your account.',
+    sections: [
+      {
+        icon: 'shield-checkmark-outline',
+        title: 'Information We Collect',
+        body: `We collect information you provide directly, such as your name, email address, and baby profiles (name, date of birth, gender, weight, and height). We also collect cry audio samples during active detection sessions — these are processed on-device and never stored on our servers.`
+      },
+      {
+        icon: 'eye-outline',
+        title: 'How We Use Your Information',
+        body: `Your data is used to power growth charts, vaccination schedules, and cry-detection results. We do not sell your personal data to third parties, ever.`
+      },
+      {
+        icon: 'lock-closed-outline',
+        title: 'Data Security',
+        body: `All data in transit is encrypted with TLS 1.3. Data at rest is encrypted using AES-256. Access is limited to staff who need it to provide support.`
+      },
+      {
+        icon: 'person-outline',
+        title: 'Your Rights',
+        body: `You have the right to access, correct, or delete your data at any time from your Profile screen or by contacting us at privacy@lullaby.app.`
+      }
+    ]
   },
-  {
-    icon: 'eye-outline',
-    title: 'How We Use Your Information',
-    body: `Your data is used to:\n• Power growth charts, vaccination schedules, and cry-detection results\n• Send you reminders and alerts you have enabled\n• Improve our AI models in aggregate, anonymised form\n• Respond to your support requests\n\nWe do not sell your personal data to third parties, ever.`
-  },
-  {
-    icon: 'lock-closed-outline',
-    title: 'Data Security',
-    body: `All data in transit is encrypted with TLS 1.3. Data at rest is encrypted using AES-256. We conduct regular third-party security audits and follow OWASP mobile security guidelines.\n\nAccess to personal data within our team is limited to staff who need it to provide support or improve the service.`
-  },
-  {
-    icon: 'share-social-outline',
-    title: 'Sharing Your Data',
-    body: `We share data only in the following limited circumstances:\n• With cloud infrastructure providers (AWS, encrypted) who process data on our behalf\n• With analytics providers (anonymised, aggregated only)\n• When required by law or to protect the safety of our users\n\nWe will always notify you if a legal request seeks access to your identifiable data, unless prohibited from doing so.`
-  },
-  {
-    icon: 'person-outline',
-    title: 'Your Rights',
-    body: `You have the right to:\n• Access all personal data we hold about you\n• Correct inaccurate data at any time from your Profile screen\n• Delete your account and all associated data permanently\n• Export your data in a portable format\n• Withdraw consent for optional data processing at any time\n\nTo exercise any of these rights, contact us at privacy@babybloom.app.`
-  },
-  {
-    icon: 'people-outline',
-    title: "Children's Privacy",
-    body: `BabyBloom is designed for parents and caregivers. The app accounts registered by users must belong to adults (18+). We do not knowingly collect personal data directly from children. Baby profile data entered by a parent or caregiver is protected under the same policies as adult user data.`
-  },
-  {
-    icon: 'notifications-outline',
-    title: 'Cookies & Tracking',
-    body: `Our mobile app does not use browser cookies. We use a minimal set of first-party analytics events to understand feature usage. You can opt out of analytics at any time in Settings → App → Analytics.`
-  },
-  {
-    icon: 'refresh-outline',
-    title: 'Changes to This Policy',
-    body: `We may update this Privacy Policy from time to time. When we make material changes, we will notify you via push notification and display the updated date at the top of this page. Continued use of the app after notification constitutes acceptance.`
-  },
-  {
-    icon: 'mail-outline',
-    title: 'Contact',
-    body: `For privacy-specific questions or requests:\n\nEmail: privacy@babybloom.app\nMailing address: BabyBloom Inc., 123 Bloom Street, Cairo, Egypt\n\nFor general support, visit the Contact Support page.`
+  ar: {
+    lastUpdated: '١ يونيو ٢٠٢٥',
+    introTitle: 'خصوصيتك تهمنا',
+    introText:
+      'تم بناء Lullaby من أجل العائلات. نحن ملتزمون بالشفافية حول كيفية جمع بياناتك واستخدامها وحمايتها. يرجى قراءة هذه السياسة بعناية.',
+    footerText:
+      'باستخدامك لـ Lullaby، فإنك توافق على سياسة الخصوصية هذه. إذا كنت لا توافق، يرجى التوقف عن الاستخدام والاتصال بنا لحذف حسابك.',
+    sections: [
+      {
+        icon: 'shield-checkmark-outline',
+        title: 'المعلومات التي نجمعها',
+        body: `نجمع المعلومات التي تقدمها مباشرة، مثل اسمك وبريدك الإلكتروني وملفات تعريف الطفل (الاسم، تاريخ الميلاد، الجنس، الوزن، والطول). كما نجمع عينات صوت البكاء أثناء جلسات الكشف النشطة - يتم معالجة هذه العينات على الجهاز ولا يتم تخزينها أبدًا على خوادمنا.`
+      },
+      {
+        icon: 'eye-outline',
+        title: 'كيفية استخدام معلوماتك',
+        body: `تُستخدم بياناتك لتشغيل مخططات النمو وجداول التطعيمات ونتائج تحليل البكاء. نحن لا نبيع بياناتك الشخصية لأطراف ثالثة أبدًا.`
+      },
+      {
+        icon: 'lock-closed-outline',
+        title: 'أمن البيانات',
+        body: `يتم تشفير جميع البيانات أثناء النقل باستخدام TLS 1.3. البيانات المخزنة مشفرة باستخدام AES-256. يقتصر الوصول على الموظفين الذين يحتاجون إليها لتقديم الدعم.`
+      },
+      {
+        icon: 'person-outline',
+        title: 'حقوقك',
+        body: `لديك الحق في الوصول إلى بياناتك أو تصحيحها أو حذفها في أي وقت من شاشة ملفك الشخصي أو عبر مراسلتنا على privacy@lullaby.app.`
+      }
+    ]
   }
-]
+}
+
+// ── Sub-Component ────────────────────────────────────────────────────
 
 const PolicySection: React.FC<{
   icon: string
   title: string
   body: string
-}> = ({ icon, title, body }) => (
+  isRTL: boolean
+}> = ({ icon, title, body, isRTL }) => (
   <View style={styles.policySection}>
-    <View style={styles.policySectionHeader}>
+    <View
+      style={[
+        styles.policySectionHeader,
+        { flexDirection: isRTL ? 'row-reverse' : 'row' }
+      ]}
+    >
       <View style={styles.policyIcon}>
         <Ionicons name={icon as any} size={18} color="#C07792" />
       </View>
-      <Text style={styles.policySectionTitle}>{title}</Text>
+      <Text
+        style={[
+          styles.policySectionTitle,
+          { textAlign: isRTL ? 'right' : 'left' }
+        ]}
+      >
+        {title}
+      </Text>
     </View>
-    <Text style={styles.policySectionBody}>{body}</Text>
+    <Text
+      style={[
+        styles.policySectionBody,
+        { textAlign: isRTL ? 'right' : 'left' }
+      ]}
+    >
+      {body}
+    </Text>
   </View>
 )
 
+// ── Main Screen ──────────────────────────────────────────────────────
+
 export const PrivacyPolicyScreen: React.FC = () => {
   const navigation = useNavigation()
+  const { t, isRTL, locale } = useTranslation()
+
+  const content = locale === 'ar' ? POLICY_DATA.ar : POLICY_DATA.en
+  const rowDir = isRTL ? 'row-reverse' : 'row'
+  const textAlign = isRTL ? 'right' : 'left'
 
   return (
     <LinearGradient
@@ -94,14 +139,18 @@ export const PrivacyPolicyScreen: React.FC = () => {
     >
       <SafeAreaView style={styles.safe} edges={['top']}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: rowDir }]}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={22} color="#8E5E71" />
+            <Ionicons
+              name={isRTL ? 'chevron-forward' : 'chevron-back'}
+              size={22}
+              color="#8E5E71"
+            />
           </TouchableOpacity>
-          <Text style={styles.title}>Privacy Policy</Text>
+          <Text style={styles.title}>{t('settings.privacyPolicy')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -110,41 +159,43 @@ export const PrivacyPolicyScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Intro banner */}
-          <View style={[styles.introBanner, Shadows.sm]}>
+          <View
+            style={[styles.introBanner, Shadows.sm, { flexDirection: rowDir }]}
+          >
             <Ionicons name="shield-half-outline" size={28} color="#C07792" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.introTitle}>Your privacy matters to us</Text>
-              <Text style={styles.introSub}>Last updated: {LAST_UPDATED}</Text>
+            <View
+              style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' }}
+            >
+              <Text style={styles.introTitle}>{content.introTitle}</Text>
+              <Text style={styles.introSub}>
+                {isRTL ? 'آخر تحديث: ' : 'Last updated: '}
+                {content.lastUpdated}
+              </Text>
             </View>
           </View>
 
-          <Text style={styles.intro}>
-            BabyBloom is built for families. We are committed to being
-            transparent about how we collect, use, and protect the data you
-            trust us with. Please read this policy carefully.
-          </Text>
+          <Text style={[styles.intro, { textAlign }]}>{content.introText}</Text>
 
           {/* Policy sections */}
           <View style={[styles.card, Shadows.sm]}>
-            {SECTIONS.map((sec, idx) => (
+            {content.sections.map((sec, idx) => (
               <View key={sec.title}>
                 <PolicySection
                   icon={sec.icon}
                   title={sec.title}
                   body={sec.body}
+                  isRTL={isRTL}
                 />
-                {idx < SECTIONS.length - 1 && <View style={styles.divider} />}
+                {idx < content.sections.length - 1 && (
+                  <View style={styles.divider} />
+                )}
               </View>
             ))}
           </View>
 
           {/* Footer note */}
           <View style={[styles.footerNote, Shadows.sm]}>
-            <Text style={styles.footerText}>
-              By using BabyBloom you agree to this Privacy Policy. If you do not
-              agree, please discontinue use and contact us to delete your
-              account.
-            </Text>
+            <Text style={styles.footerText}>{content.footerText}</Text>
           </View>
 
           <View style={{ height: 100 }} />
@@ -157,7 +208,6 @@ export const PrivacyPolicyScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: 'transparent' },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
@@ -179,7 +229,6 @@ const styles = StyleSheet.create({
   container: { padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 120 },
 
   introBanner: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
     backgroundColor: '#FFFFFFCC',
@@ -208,7 +257,6 @@ const styles = StyleSheet.create({
 
   policySection: { padding: Spacing.lg },
   policySectionHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
     marginBottom: Spacing.sm

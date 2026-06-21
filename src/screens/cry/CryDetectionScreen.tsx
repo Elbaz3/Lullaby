@@ -15,8 +15,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { Audio } from 'expo-av'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system'
+import * as DocumentPicker from 'expo-document-picker'
 
-// Logic/Data Imports (from File 2)
+// Logic/Data Imports
 import { tokenStorage, BASE_URL } from '../../services/api'
 import { getLocale } from '../../store/localeStore'
 import {
@@ -227,12 +228,14 @@ export const CryDetectionScreen: React.FC = () => {
   const [timer, setTimer] = useState(0)
   const [metering, setMetering] = useState(-160)
   const [audioUri, setAudioUri] = useState<string | null>(null)
+  const [audioName, setAudioName] = useState<string>('cry.wav')
   const [isPlaying, setIsPlaying] = useState(false)
   const [playPos, setPlayPos] = useState(0)
   const [prediction, setPrediction] = useState<string>('')
   const [confidence, setConfidence] = useState<number>(0)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [permission, setPermission] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   const recordingRef = useRef<Audio.Recording | null>(null)
   const soundRef = useRef<Audio.Sound | null>(null)
@@ -259,6 +262,8 @@ export const CryDetectionScreen: React.FC = () => {
     if (meteringRef.current) clearInterval(meteringRef.current)
     soundRef.current?.unloadAsync()
   }
+
+  // ── Record ────────────────────────────────────────────────────────────────
 
   const startRecording = async () => {
     if (!permission) return
@@ -311,6 +316,7 @@ export const CryDetectionScreen: React.FC = () => {
       { encoding: FileSystem.EncodingType.Base64 }
     )
     setAudioUri(mockUri)
+    setAudioName('cry.wav')
     setState('preview')
   }
 
@@ -322,11 +328,39 @@ export const CryDetectionScreen: React.FC = () => {
       await recordingRef.current.stopAndUnloadAsync()
       const uri = recordingRef.current.getURI()
       setAudioUri(uri)
+      setAudioName('cry.wav')
       setState('preview')
     } catch (e) {
       console.error(e)
     }
   }
+
+  // ── Upload from device ────────────────────────────────────────────────────
+
+  const pickAudioFile = async () => {
+    setIsUploading(true)
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['audio/*'], // any audio format
+        copyToCacheDirectory: true
+      })
+
+      // User cancelled
+      if (result.canceled || !result.assets?.length) return
+
+      const file = result.assets[0]
+      setAudioUri(file.uri)
+      setAudioName(file.name ?? 'audio_upload')
+      setAnalyzeError(null)
+      setState('preview')
+    } catch (e) {
+      console.error('File pick error:', e)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  // ── Analyze ───────────────────────────────────────────────────────────────
 
   const handleSend = async () => {
     if (!audioUri) return
@@ -334,10 +368,22 @@ export const CryDetectionScreen: React.FC = () => {
     try {
       const token = await tokenStorage.get()
       const formData = new FormData()
+
+      // Infer MIME type from file name extension
+      const ext = audioName.split('.').pop()?.toLowerCase() ?? 'wav'
+      const mimeType =
+        ext === 'mp3'
+          ? 'audio/mpeg'
+          : ext === 'm4a'
+            ? 'audio/mp4'
+            : ext === 'ogg'
+              ? 'audio/ogg'
+              : 'audio/wav'
+
       formData.append('file', {
         uri: audioUri,
-        name: 'cry.wav',
-        type: 'audio/wav'
+        name: audioName,
+        type: mimeType
       } as any)
 
       const response = await fetch(`${BASE_URL}/ai-predictions/predict`, {
@@ -360,6 +406,8 @@ export const CryDetectionScreen: React.FC = () => {
     }
   }
 
+  // ── Playback ──────────────────────────────────────────────────────────────
+
   const playPreview = async () => {
     const { sound } = await Audio.Sound.createAsync(
       { uri: audioUri! },
@@ -374,6 +422,8 @@ export const CryDetectionScreen: React.FC = () => {
     soundRef.current = sound
     setIsPlaying(true)
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <LinearGradient
@@ -391,11 +441,14 @@ export const CryDetectionScreen: React.FC = () => {
           </View>
 
           <View style={[styles.mainCard, Shadows.lg]}>
+            {/* ── IDLE ── */}
             {state === 'idle' && (
               <View style={styles.centerContent}>
                 <Text style={styles.instructionText}>
                   {t('cry.idleInstruction')}
                 </Text>
+
+                {/* Mic button with pulse rings */}
                 <View style={styles.pulseWrap}>
                   <PulseRing delay={0} size={220} />
                   <PulseRing delay={600} size={180} />
@@ -406,10 +459,54 @@ export const CryDetectionScreen: React.FC = () => {
                     <Ionicons name="mic" size={44} color="#fff" />
                   </TouchableOpacity>
                 </View>
+
                 <Text style={styles.idleHint}>{t('cry.tapStart')}</Text>
+
+                {/* Divider */}
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Upload from device */}
+                <TouchableOpacity
+                  style={styles.uploadBtn}
+                  onPress={pickAudioFile}
+                  disabled={isUploading}
+                  activeOpacity={0.8}
+                >
+                  {isUploading ? (
+                    <ActivityIndicator size="small" color="#C07792" />
+                  ) : (
+                    <>
+                      <View style={styles.uploadIconBox}>
+                        <Ionicons
+                          name="folder-open-outline"
+                          size={20}
+                          color="#C07792"
+                        />
+                      </View>
+                      <Text style={styles.uploadBtnText}>
+                        Upload from device
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color="#C07792"
+                        style={{ opacity: 0.6 }}
+                      />
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={styles.uploadHint}>
+                  Supports WAV, MP3, M4A, OGG
+                </Text>
               </View>
             )}
 
+            {/* ── RECORDING ── */}
             {state === 'recording' && (
               <View style={styles.centerContent}>
                 <Text style={styles.recordingLabel}>{t('cry.recording')}</Text>
@@ -435,13 +532,34 @@ export const CryDetectionScreen: React.FC = () => {
               </View>
             )}
 
+            {/* ── PREVIEW ── */}
             {state === 'preview' && (
               <View style={styles.centerContent}>
                 <Ionicons name="checkmark-circle" size={52} color="#4CAF50" />
                 <Text style={styles.previewTitle}>{t('cry.previewTitle')}</Text>
+
+                {/* Show file name if uploaded */}
+                {audioName !== 'cry.wav' && (
+                  <View style={styles.fileNameRow}>
+                    <Ionicons
+                      name="document-outline"
+                      size={14}
+                      color="#A97C8E"
+                    />
+                    <Text
+                      style={styles.fileNameText}
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      {audioName}
+                    </Text>
+                  </View>
+                )}
+
                 {analyzeError && (
                   <Text style={styles.errorText}>{analyzeError}</Text>
                 )}
+
                 <View style={styles.playbackRow}>
                   <TouchableOpacity
                     style={styles.playBtn}
@@ -463,6 +581,7 @@ export const CryDetectionScreen: React.FC = () => {
                     />
                   </View>
                 </View>
+
                 <View style={styles.previewActions}>
                   <TouchableOpacity
                     style={styles.rerecordBtn}
@@ -477,6 +596,7 @@ export const CryDetectionScreen: React.FC = () => {
               </View>
             )}
 
+            {/* ── ANALYZING ── */}
             {state === 'analyzing' && (
               <View style={styles.centerContent}>
                 <ActivityIndicator size="large" color="#C07792" />
@@ -486,6 +606,7 @@ export const CryDetectionScreen: React.FC = () => {
               </View>
             )}
 
+            {/* ── RESULT ── */}
             {state === 'result' && (
               <ResultCard
                 prediction={prediction}
@@ -521,6 +642,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22
   },
+
+  /* pulse / mic */
   pulseWrap: {
     width: 220,
     height: 220,
@@ -538,6 +661,50 @@ const styles = StyleSheet.create({
   },
   pulseRing: { position: 'absolute', borderWidth: 1.5, borderColor: '#C07792' },
   idleHint: { fontSize: 13, color: '#A97C8E' },
+
+  /* divider */
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '80%',
+    gap: 10
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E8D0DC' },
+  dividerText: { fontSize: 12, color: '#A97C8E', fontWeight: '600' },
+
+  /* upload button */
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFF0F5',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#F0D5E0',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    width: '100%',
+    minHeight: 52,
+    justifyContent: 'center'
+  },
+  uploadIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFFCC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.sm
+  },
+  uploadBtnText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E5E71'
+  },
+  uploadHint: { fontSize: 11, color: '#C4A0B0', marginTop: -10 },
+
+  /* recording */
   recordingLabel: { fontSize: 18, fontWeight: '600', color: '#C07792' },
   waveformWrap: {
     flexDirection: 'row',
@@ -568,7 +735,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#E53935',
     borderRadius: 4
   },
+
+  /* preview */
   previewTitle: { fontSize: 22, fontWeight: '700', color: '#8E5E71' },
+  fileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    maxWidth: '90%'
+  },
+  fileNameText: { fontSize: 12, color: '#A97C8E', flex: 1 },
   playbackRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -607,6 +783,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#C07792',
     alignItems: 'center'
   },
+
+  /* result */
   resultIconWrap: {
     width: 100,
     height: 100,

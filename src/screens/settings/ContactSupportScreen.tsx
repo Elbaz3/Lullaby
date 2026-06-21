@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Linking
+  Linking,
+  Platform
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -20,57 +21,69 @@ import {
   Radius,
   Shadows
 } from '../../constants/theme'
-
-const CONTACT_CHANNELS = [
-  {
-    icon: 'mail-outline',
-    label: 'Email Us',
-    value: 'support@babybloom.app',
-    sub: 'We reply within 24 hours',
-    onPress: () => Linking.openURL('mailto:support@babybloom.app')
-  },
-  {
-    icon: 'logo-whatsapp',
-    label: 'WhatsApp',
-    value: '+1 (800) 123-4567',
-    sub: 'Mon – Fri, 9 AM – 6 PM',
-    onPress: () => Linking.openURL('https://wa.me/18001234567')
-  },
-  {
-    icon: 'chatbubble-ellipses-outline',
-    label: 'Live Chat',
-    value: 'Open in app',
-    sub: 'Average wait: under 5 min',
-    onPress: () =>
-      Alert.alert(
-        'Coming soon',
-        'Live chat will be available in the next update.'
-      )
-  }
-]
+import { useTranslation } from '../../i18n/useTranslation'
 
 export const ContactSupportScreen: React.FC = () => {
   const navigation = useNavigation()
+  const { t, isRTL } = useTranslation()
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
 
+  // ── Localized Data ──────────────────────────────────────────────────
+
+  const CONTACT_CHANNELS = [
+    {
+      icon: 'mail-outline',
+      label: t('profile.email'),
+      value: 'support@lullaby.app',
+      sub: isRTL ? 'نرد خلال 24 ساعة' : 'We reply within 24 hours',
+      onPress: () => Linking.openURL('mailto:support@lullaby.app')
+    },
+    {
+      icon: 'logo-whatsapp',
+      label: 'WhatsApp',
+      value: '+20 101 123 4567',
+      sub: isRTL ? 'السبت – الخميس، 9 ص – 6 م' : 'Sat – Thu, 9 AM – 6 PM',
+      onPress: () => Linking.openURL('https://wa.me/201011234567')
+    },
+    {
+      icon: 'chatbubble-ellipses-outline',
+      label: t('tabs.assistant'),
+      value: isRTL ? 'افتح المساعد الذكي' : 'Open AI Assistant',
+      sub: isRTL ? 'متاح دائماً للمساعدة' : 'Always available to help',
+      onPress: () => navigation.navigate('Assistant' as never)
+    }
+  ]
+
+  // ── Logic ───────────────────────────────────────────────────────────
+
   const handleSend = async () => {
     if (!subject.trim() || !message.trim()) {
       Alert.alert(
-        'Missing info',
-        'Please fill in both the subject and your message.'
+        isRTL ? 'معلومات ناقصة' : 'Missing info',
+        isRTL
+          ? 'يرجى ملء كل من الموضوع ورسالتك.'
+          : 'Please fill in both the subject and your message.'
       )
       return
     }
     setSending(true)
-    // Simulate network delay — replace with real API call
+    // Simulate network delay
     await new Promise((r) => setTimeout(r, 1200))
     setSending(false)
     setSubject('')
     setMessage('')
-    Alert.alert('Message sent ✓', "We'll get back to you within 24 hours.")
+    Alert.alert(
+      isRTL ? 'تم الإرسال ✓' : 'Message sent ✓',
+      isRTL
+        ? 'سنرد عليك في أقرب وقت ممكن.'
+        : "We'll get back to you as soon as possible."
+    )
   }
+
+  const rowDir = isRTL ? 'row-reverse' : 'row'
+  const textAlign = isRTL ? 'right' : 'left'
 
   return (
     <LinearGradient
@@ -79,14 +92,18 @@ export const ContactSupportScreen: React.FC = () => {
     >
       <SafeAreaView style={styles.safe} edges={['top']}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: rowDir }]}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={22} color="#8E5E71" />
+            <Ionicons
+              name={isRTL ? 'chevron-forward' : 'chevron-back'}
+              size={22}
+              color="#8E5E71"
+            />
           </TouchableOpacity>
-          <Text style={styles.title}>Contact Support</Text>
+          <Text style={styles.title}>{t('settings.contactSupport')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -97,12 +114,14 @@ export const ContactSupportScreen: React.FC = () => {
         >
           {/* Quick channels */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>REACH US DIRECTLY</Text>
+            <Text style={[styles.sectionTitle, { textAlign }]}>
+              {isRTL ? 'تواصل معنا مباشرة' : 'REACH US DIRECTLY'}
+            </Text>
             <View style={[styles.card, Shadows.sm]}>
               {CONTACT_CHANNELS.map((ch, idx) => (
                 <View key={ch.label}>
                   <TouchableOpacity
-                    style={styles.channelRow}
+                    style={[styles.channelRow, { flexDirection: rowDir }]}
                     onPress={ch.onPress}
                     activeOpacity={0.7}
                   >
@@ -113,19 +132,29 @@ export const ContactSupportScreen: React.FC = () => {
                         color="#C07792"
                       />
                     </View>
-                    <View style={styles.channelInfo}>
+                    <View
+                      style={[
+                        styles.channelInfo,
+                        { alignItems: isRTL ? 'flex-end' : 'flex-start' }
+                      ]}
+                    >
                       <Text style={styles.channelLabel}>{ch.label}</Text>
                       <Text style={styles.channelValue}>{ch.value}</Text>
                       <Text style={styles.channelSub}>{ch.sub}</Text>
                     </View>
                     <Ionicons
-                      name="chevron-forward"
+                      name={isRTL ? 'chevron-back' : 'chevron-forward'}
                       size={16}
                       color="#A97C8E"
                     />
                   </TouchableOpacity>
                   {idx < CONTACT_CHANNELS.length - 1 && (
-                    <View style={styles.divider} />
+                    <View
+                      style={[
+                        styles.divider,
+                        isRTL ? { marginRight: 72 } : { marginLeft: 72 }
+                      ]}
+                    />
                   )}
                 </View>
               ))}
@@ -134,24 +163,41 @@ export const ContactSupportScreen: React.FC = () => {
 
           {/* Message form */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>SEND A MESSAGE</Text>
+            <Text style={[styles.sectionTitle, { textAlign }]}>
+              {isRTL ? 'أرسل رسالة' : 'SEND A MESSAGE'}
+            </Text>
             <View style={[styles.card, styles.formCard, Shadows.sm]}>
-              <Text style={styles.inputLabel}>Subject</Text>
+              <Text style={[styles.inputLabel, { textAlign }]}>
+                {isRTL ? 'الموضوع' : 'Subject'}
+              </Text>
               <TextInput
-                style={styles.input}
-                placeholder="e.g. Growth chart not loading"
+                style={[styles.input, { textAlign }]}
+                placeholder={
+                  isRTL
+                    ? 'مثال: مشكلة في مخطط النمو'
+                    : 'e.g. Growth chart issue'
+                }
                 placeholderTextColor="#C4A0B0"
                 value={subject}
                 onChangeText={setSubject}
                 returnKeyType="next"
               />
               <View style={styles.inputDivider} />
-              <Text style={[styles.inputLabel, { marginTop: Spacing.md }]}>
-                Message
+              <Text
+                style={[
+                  styles.inputLabel,
+                  { marginTop: Spacing.md, textAlign }
+                ]}
+              >
+                {isRTL ? 'الرسالة' : 'Message'}
               </Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Describe your issue in as much detail as you can…"
+                style={[styles.input, styles.textArea, { textAlign }]}
+                placeholder={
+                  isRTL
+                    ? 'يرجى وصف المشكلة بالتفصيل...'
+                    : 'Describe your issue in detail…'
+                }
                 placeholderTextColor="#C4A0B0"
                 value={message}
                 onChangeText={setMessage}
@@ -162,25 +208,42 @@ export const ContactSupportScreen: React.FC = () => {
             </View>
 
             <TouchableOpacity
-              style={[styles.sendBtn, sending && styles.sendBtnDisabled]}
+              style={[
+                styles.sendBtn,
+                sending && styles.sendBtnDisabled,
+                { flexDirection: rowDir }
+              ]}
               onPress={handleSend}
               disabled={sending}
               activeOpacity={0.8}
             >
-              <Ionicons name="send-outline" size={18} color="#fff" />
+              <Ionicons
+                name="send-outline"
+                size={18}
+                color="#fff"
+                style={isRTL ? { transform: [{ scaleX: -1 }] } : {}}
+              />
               <Text style={styles.sendBtnText}>
-                {sending ? 'Sending…' : 'Send Message'}
+                {sending
+                  ? isRTL
+                    ? 'جاري الإرسال...'
+                    : 'Sending…'
+                  : isRTL
+                    ? 'إرسال الرسالة'
+                    : 'Send Message'}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Response time note */}
-          <View style={[styles.noteCard, Shadows.sm]}>
+          <View
+            style={[styles.noteCard, Shadows.sm, { flexDirection: rowDir }]}
+          >
             <Ionicons name="time-outline" size={18} color="#C07792" />
-            <Text style={styles.noteText}>
-              Our support team is available Monday to Friday, 9 AM – 6 PM
-              (GMT+2). We aim to respond to all messages within one business
-              day.
+            <Text style={[styles.noteText, { textAlign }]}>
+              {isRTL
+                ? 'فريق الدعم متاح من السبت إلى الخميس، 9 صباحاً – 6 مساءً (GMT+2). نهدف للرد على جميع الرسائل خلال يوم عمل واحد.'
+                : 'Our support team is available Saturday to Thursday, 9 AM – 6 PM (GMT+2). We aim to respond to all messages within one business day.'}
             </Text>
           </View>
 
@@ -194,7 +257,6 @@ export const ContactSupportScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: 'transparent' },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
@@ -232,7 +294,6 @@ const styles = StyleSheet.create({
 
   // Channels
   channelRow: {
-    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
@@ -254,7 +315,7 @@ const styles = StyleSheet.create({
   },
   channelValue: { fontSize: FontSize.sm, color: '#C07792', marginTop: 1 },
   channelSub: { fontSize: FontSize.xs, color: '#A97C8E', marginTop: 1 },
-  divider: { height: 1, backgroundColor: '#E8D0DC', marginLeft: 72 },
+  divider: { height: 1, backgroundColor: '#E8D0DC' },
 
   // Form
   inputLabel: {
@@ -274,7 +335,6 @@ const styles = StyleSheet.create({
   inputDivider: { height: 1, backgroundColor: '#E8D0DC' },
 
   sendBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
@@ -291,7 +351,6 @@ const styles = StyleSheet.create({
   },
 
   noteCard: {
-    flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.sm,
     backgroundColor: '#FFFFFFCC',
