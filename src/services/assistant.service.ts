@@ -56,7 +56,7 @@ export const assistantService = {
     const token = await SecureStore.getItemAsync(STORAGE_KEYS.TOKEN)
 
     const response = await fetch(`${BASE_URL}/chatbot/memory`, {
-      method: 'DELETE',
+      method: 'POST',
       headers: {
         Accept: 'application/json',
         lang: getLocale(),

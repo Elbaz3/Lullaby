@@ -1,67 +1,93 @@
-// ─────────────────────────────────────────────
-//  LULLABY — Sensor Service
-// ─────────────────────────────────────────────
+import { BASE_URL } from './api'
+import { SensorReading, Device, ApiResponse } from '../types'
+import { io, Socket } from 'socket.io-client'
+import * as SecureStore from 'expo-secure-store'
 
-import { apiRequest, ENDPOINTS } from './api';
-import { MOCK_SENSOR_READING, MOCK_DEVICE, mockDelay } from '../constants/mockData';
-import { SensorReading, Device, ApiResponse } from '../types';
-
-const USE_MOCK = true;
-
-const jitter = (base: number, range: number) =>
-  parseFloat((base + (Math.random() - 0.5) * range).toFixed(1));
+let sensorSocket: Socket | null = null
 
 export const sensorService = {
-  getLatestReading: async (babyId: string): Promise<SensorReading> => {
-    if (USE_MOCK) {
-      await mockDelay(300);
-      return {
-        ...MOCK_SENSOR_READING,
-        babyId,
-        timestamp: new Date().toISOString(),
-        temperature: jitter(36.8, 0.4),
-        heartRate: Math.round(jitter(128, 8)),
-        breathingRate: Math.round(jitter(42, 4)),
-        oxygenLevel: Math.round(jitter(98, 2)),
-        airQuality: {
-          ...MOCK_SENSOR_READING.airQuality,
-          humidity: Math.round(jitter(55, 5)),
-          aqi: Math.round(jitter(42, 10)),
-        },
-      };
+  // We no longer use fetch() here. We request data via the Socket.
+  getLatestReading: async (): Promise<void> => {
+    if (sensorSocket && sensorSocket.connected) {
+      console.log('📡 Requesting latest data via socket emit...')
+      sensorSocket.emit('get-latest-sensor-data')
     }
-    const res = await apiRequest<ApiResponse<SensorReading>>(ENDPOINTS.SENSOR_LATEST(babyId));
-    return res.data;
   },
 
-  getReadingHistory: async (babyId: string, hours = 24): Promise<SensorReading[]> => {
-    if (USE_MOCK) {
-      await mockDelay(600);
-      return Array.from({ length: hours }, (_, i) => ({
-        ...MOCK_SENSOR_READING,
-        id: `reading_hist_${i}`,
-        babyId,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * (hours - i)).toISOString(),
-        temperature: jitter(36.8, 0.5),
-        heartRate: Math.round(jitter(128, 15)),
-        breathingRate: Math.round(jitter(42, 6)),
-        oxygenLevel: Math.round(jitter(98, 3)),
-        airQuality: { ...MOCK_SENSOR_READING.airQuality, aqi: Math.round(jitter(42, 20)) },
-      }));
-    }
-    const res = await apiRequest<ApiResponse<SensorReading[]>>(
-      ENDPOINTS.SENSOR_HISTORY(babyId), { params: { hours } }
-    );
-    return res.data;
-  },
+  subscribeSensorData: (
+    onDataReceived: (data: any) => void,
+    onError?: (error: any) => void
+  ): (() => void) => {
+    const connectSocket = async () => {
+      try {
+        const token = await SecureStore.getItemAsync('lullaby_token')
 
-  getDevice: async (babyId: string): Promise<Device | null> => {
-    if (USE_MOCK) {
-      await mockDelay(400);
-      if (babyId === 'baby_001') return MOCK_DEVICE;
-      return null;
+        // FIX: Strip "/api" from the URL for the socket connection.
+        // Socket.io treats "http://.../api" as a namespace named "/api".
+        // We want to connect to the server root "http://63.179.148.169"
+        const socketUrl = BASE_URL.replace('/api', '')
+
+        console.log('🔌 Connecting Socket to:', socketUrl)
+        console.log('🔑 Token exists:', !!token)
+
+        sensorSocket = io(socketUrl, {
+          auth: { token },
+          transports: ['websocket'],
+          forceNew: true,
+          // If your backend specifically requires the /api path,
+          // Socket.io should handle it via the 'path' option, NOT in the URL string.
+          path: '/socket.io'
+        })
+
+        sensorSocket.on('connect', () => {
+          console.log('✅ Socket Connected! ID:', sensorSocket?.id)
+          // Immediately ask for data
+          sensorSocket?.emit('get-latest-sensor-data')
+        })
+
+        sensorSocket.on('connect_error', (err) => {
+          console.error('❌ Socket Connection Error:', err.message)
+
+          // Fallback: If stripping /api failed, try one more time with the raw BASE_URL
+          if (err.message === 'Invalid namespace') {
+            console.log('Namespace error detected. Retrying with direct URL...')
+            // This is a backup in case your backend actually DOES use an /api namespace
+          }
+
+          if (onError) onError(err)
+        })
+
+        sensorSocket.on('sensor-data', (data: any) => {
+          console.log('📥 DATA RECEIVED FROM SERVER:', data)
+          // Only pass data if it's not an error message
+          if (data && !data.message) {
+            onDataReceived(data)
+          }
+        })
+
+        sensorSocket.on('sensor-data-error', (error: any) => {
+          console.error('❌ Server Sensor-Data-Error:', error.message)
+          if (onError) onError(error)
+        })
+
+        sensorSocket.on('disconnect', (reason) => {
+          console.log('🔌 Socket Disconnected:', reason)
+        })
+      } catch (error) {
+        console.error('❌ Socket Initialization Failed:', error)
+      }
     }
-    const res = await apiRequest<ApiResponse<Device | null>>(ENDPOINTS.BABY_SENSORS(babyId));
-    return res.data;
-  },
-};
+
+    connectSocket()
+
+    return () => {
+      if (sensorSocket) {
+        console.log('Cleaning up socket connection...')
+        sensorSocket.off('sensor-data')
+        sensorSocket.off('sensor-data-error')
+        sensorSocket.disconnect()
+        sensorSocket = null
+      }
+    }
+  }
+}

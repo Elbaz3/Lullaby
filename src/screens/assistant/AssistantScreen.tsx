@@ -147,7 +147,9 @@ export const AssistantScreen: React.FC = () => {
       [
         { text: t('common.cancel') || 'Cancel', style: 'cancel' },
         {
-          text: t('common.confirm') || 'Clear',
+          text: isRTL
+            ? t('assistant.clearTitle') || 'Clear'
+            : t('assistant.clearTitle') || 'Clear',
           style: 'destructive',
           onPress: async () => {
             setIsClearingMemory(true)

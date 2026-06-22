@@ -49,6 +49,16 @@ export const HomeScreen: React.FC = () => {
   } = useBabyStore()
   const [refreshing, setRefreshing] = React.useState(false)
 
+  // Add this effect to watch the data
+  useEffect(() => {
+    console.log('==== DEBUG: HOME DATA ====')
+    console.log('Active Baby ID:', activeBabyId)
+    console.log('Active Baby Name:', activeBaby?.name)
+    console.log('Latest Reading:', JSON.stringify(latestReading, null, 2))
+    console.log('Latest Cry Event:', latestCryEvent)
+    console.log('==========================')
+  }, [latestReading, activeBaby, activeBabyId, latestCryEvent])
+
   // 1. Updated Age Formatting to use Translation Keys
   const formatAge = (iso: string) => {
     if (!iso) return ''
@@ -84,7 +94,9 @@ export const HomeScreen: React.FC = () => {
   useEffect(() => {
     if (activeBabyId) {
       fetchLiveData(activeBabyId)
-      const interval = setInterval(() => fetchLiveData(activeBabyId), 30000)
+      // The socket handles real-time updates now,
+      // but we keep a slow refresh as a fallback.
+      const interval = setInterval(() => fetchLiveData(activeBabyId), 60000)
       return () => clearInterval(interval)
     }
   }, [activeBabyId])
@@ -193,19 +205,21 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.column}>
               <SensorCard
                 title={t('home.bodyTemp')}
-                value={`${latestReading?.temperature.toFixed(1) ?? '36.8'} °C`}
+                // Matches "temperature" from ESP32 log
+                value={`${latestReading?.temperature?.toFixed(1) ?? '36.8'} °C`}
                 icon={TempIcon}
                 isRTL={isRTL}
               />
               <SensorCard
                 title={t('home.breathing')}
-                value={`${latestReading?.breathingRate ?? '42'} rpm`}
+                // Matches "spo2" from ESP32 log
+                value={`${latestReading?.spo2?.toFixed(1) ?? '98.0'}%`}
                 icon={BreathIcon}
                 isRTL={isRTL}
               />
               <ActionCard
                 title={t('home.vaccines')}
-                subtitle={t('growth.feedingDesc')} // Or another relevant sub-key
+                subtitle={t('growth.feedingDesc')}
                 icon={AlarmIcon}
                 onPress={() => navigation.navigate('Vaccination')}
                 isRTL={isRTL}
@@ -215,7 +229,8 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.column}>
               <SensorCard
                 title={t('home.heartRate')}
-                value={`${latestReading?.heartRate ?? '128'} bpm`}
+                // Matches "heartRate" from ESP32 log
+                value={`${latestReading?.heartRate?.toFixed(0) ?? '80'} bpm`}
                 icon={HeartIcon}
                 showGraph
                 isRTL={isRTL}
@@ -293,7 +308,7 @@ export const HomeScreen: React.FC = () => {
               <View style={[styles.airMain, { flexDirection: rowDirection }]}>
                 <View style={styles.aqiCircle}>
                   <Text style={styles.aqiValue}>
-                    {latestReading?.airQuality.aqi ?? '24'}
+                    {latestReading?.airQuality?.aqi ?? '24'}
                   </Text>
                   <Text style={styles.aqiUnit}>{t('home.overallAqi')}</Text>
                 </View>
@@ -304,19 +319,19 @@ export const HomeScreen: React.FC = () => {
                   <AirItem
                     icon="water-outline"
                     label={t('home.humidity')}
-                    value={`${latestReading?.airQuality.humidity ?? 45}%`}
+                    value={`${latestReading?.airQuality?.humidity ?? 45}%`}
                     isRTL={isRTL}
                   />
                   <AirItem
                     icon="thermometer-outline"
                     label={t('home.roomTemp')}
-                    value={`${latestReading?.airQuality.temperature ?? 22}°C`}
+                    value={`${latestReading?.airQuality?.temperature ?? 22}°C`}
                     isRTL={isRTL}
                   />
                   <AirItem
                     icon="cloud-outline"
                     label={t('home.co2')}
-                    value={`${latestReading?.airQuality.co2 ?? 410}ppm`}
+                    value={`${latestReading?.airQuality?.co2 ?? 410}ppm`}
                     isRTL={isRTL}
                   />
                 </View>

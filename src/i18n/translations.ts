@@ -11,7 +11,8 @@ const en: Dict = {
     comingSoon: 'Coming soon',
     comingSoonBody: 'This section will be available in a future update.',
     old: 'old',
-    seen: 'Seen'
+    seen: 'Seen',
+    confirm: 'Confirm'
   },
   settings: {
     title: 'Settings',
@@ -381,8 +382,12 @@ const en: Dict = {
     markAsSeen: 'Mark as Seen'
   },
   assistant: {
+    clearTitle: 'Clear Chat',
+    clearConfirm:
+      'Are you sure you want to delete all messages? This action cannot be undone.',
+
     welcomeMsg:
-      "👋 Hi! I'm your Baby Care Assistant.\n\nI can help you with feeding schedules, sleep tips, cry interpretation, vaccination info, and general baby health questions.\n\nWhat would you like to know?",
+      " Hi! I'm your Baby Care Assistant.\n\nI can help you with feeding schedules, sleep tips, cry interpretation, vaccination info, and general baby health questions.\n\nWhat would you like to know?",
     errorMsg:
       "Sorry, I'm having trouble responding right now. Please try again.",
     title: 'Baby Care Assistant',
@@ -621,7 +626,8 @@ const ar: Dict = {
     comingSoon: 'قريبًا',
     comingSoonBody: 'سيتوفر هذا القسم في تحديث لاحق.',
     old: 'العمر',
-    seen: 'تمت المشاهدة'
+    seen: 'تمت المشاهدة',
+    confirm: 'تأكيد'
   },
   settings: {
     title: 'الإعدادات',
@@ -985,8 +991,11 @@ const ar: Dict = {
     markAsSeen: 'تعليم كمقروء'
   },
   assistant: {
+    clearTitle: 'مسح المحادثة',
+    clearConfirm:
+      'هل أنت متأكد أنك تريد حذف جميع الرسائل؟ لا يمكن التراجع عن هذا الإجراء.',
     welcomeMsg:
-      '👋 مرحبًا! أنا مساعد رعاية الطفل.\n\nيمكنني المساعدة في التغذية، النوم، تفسير البكاء، التطعيم، وأسئلة الصحة العامة.\n\nما الذي تريد معرفته؟',
+      ' مرحبًا! أنا مساعد رعاية الطفل.\n\nيمكنني المساعدة في التغذية، النوم، تفسير البكاء، التطعيم، وأسئلة الصحة العامة.\n\nما الذي تريد معرفته؟',
     errorMsg: 'عذرًا، حدث خطأ. حاول مرة أخرى.',
     title: 'مساعد رعاية الطفل',
     online: 'متاح دائمًا',
